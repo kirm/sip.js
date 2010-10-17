@@ -3,6 +3,7 @@
 var sys = require('sys');
 var net = require('net');
 var dgram = require('dgram');
+var dns = require('dns');
 
 function parseResponse(rs, m) {
   var r = rs.match(/^SIP\/(\d\.\d)\s+(\d+)\s*(.*)\s*$/);
@@ -66,7 +67,6 @@ function parseGenericHeader(d, h) {
 }
 
 function parseAOR(data) {
-  debugger;
   var r = applyRegex(/((?:[\w\-.!%*_+`'~]+)(?:\s+[\w\-.!%*_+`'~]+)*|"[^"\\]*(?:\\.[^"\\]*)*")?\s*\<\s*([^>]*)\s*\>|((?:[^\s@"<]@)?[^;]+)/g, data);
 
   return parseParams(data, {name: r[1], uri: r[2] || r[3]});
@@ -124,6 +124,7 @@ var parsers = {
   },
   'route': parseMultiHeader.bind(0, parseAOR),
   'cseq': parseCSeq,
+  'content-length': function(v) { return +v.s; },
   'via': parseMultiHeader.bind(0, parseVia),
   'www-authenticate': parseMultiHeader.bind(0, parseAuthHeader),
   'proxy-authenticate': parseMultiHeader.bind(0, parseAuthHeader),
@@ -157,6 +158,63 @@ function parse(data) {
   return m;
 }
 
+function parseUri(s) {
+  var re = /^(sips?):(?:([^\s>:@]+)(?::([^\s@>]+))?@)([\w\-\.]+)(?::(\d+))?((?:;[^\s=\?>;]+(?:=[^\s?\;]+)?)*)(\?([^\s&=>]+=[^\s&=>]+)(&[^\s&=>]+=[^\s&=>]+)*)?$/;
+
+  var r = re.exec(s);
+
+  if(r) {
+    return {
+      schema: r[1],
+      user: r[2],
+      password: r[3],
+      host: r[4],
+      port: +r[5],
+      params: (r[6].match(/([^;=]+)(=([^;=]+))?/g) || [])
+        .map(function(s) { return s.split('='); })
+        .reduce(function(params, x) { params[x[0]]=x[1] || null; return params;}, {}),
+      headers: ((r[7] || '').match(/[^&=]+=[^&=]+/g) || [])
+        .map(function(s){ return s.split('=') })
+        .reduce(function(params, x) { params[x[0]]=x[1]; return params; }, {})
+    }
+  }
+}
+
+exports.parseUri = parseUri;
+
+function stringifyVersion(v) {
+  return v || '2.0';
+}
+
+function stringifyUri(uri) {
+  if(typeof uri === 'string')
+    return uri;
+
+  var s = (uri.schema || 'sip') + ':';
+
+  if(uri.user) {
+    if(uri.passwd)
+      s += uri.user + ':' + uri.password + '@';
+    else
+      s += uri.user + '@';
+  }
+
+  s += uri.host;
+
+  if(uri.port)
+    s += ':' + uri.port;
+
+  if(uri.params)
+    s += Object.keys(uri.params).map(function(x){return ';'+x+(uri.params[x] ? '='+uri.params[x] : '');}).join('');
+
+  if(uri.headers) {
+    var h = Object.keys(uri.headers).map(function(x){return x+'='+uri.headers[x];}).join('&');
+    if(h.length)
+      s += '?' + h; 
+  }
+  return s;
+}
+
 function stringifyParams(params) {
   var s = '';
   for(var n in params) {
@@ -185,7 +243,7 @@ function stringifyAuthHeader(a) {
 var stringifiers = {
   via: function(h) {
     return h.map(function(via) {
-      return 'Via: SIP/'+via.version+'/'+via.protocol.toUpperCase()+' '+via.host+(via.port?':'+via.port:'')+stringifyParams(via.params)+'\r\n';
+      return 'Via: SIP/'+stringifyVersion(via.version)+'/'+via.protocol.toUpperCase()+' '+via.host+(via.port?':'+via.port:'')+stringifyParams(via.params)+'\r\n';
     }).join('');
   },
   to: function(h) {
@@ -195,7 +253,7 @@ var stringifiers = {
     return 'From: '+stringifyAOR(h)+'\r\n';
   },
   contact: function(h) { 
-    return 'Contact: '+ (h !== '*' && h.length) ? h.map(stringifyAOR).join(', ') : '*' + '\r\n'
+    return 'Contact: '+ ((h !== '*' && h.length) ? h.map(stringifyAOR).join(', ') : '*') + '\r\n';
   },
   cseq: function(cseq) { 
     return 'CSeq: '+cseq.seq+' '+cseq.method+'\r\n';
@@ -217,10 +275,10 @@ var stringifiers = {
 function stringify(m) {
   var s;
   if(m.status) {
-    s = 'SIP/'+m.version + ' ' + m.status + ' ' + m.reason + '\r\n';
+    s = 'SIP/' + stringifyVersion(m.version) + ' ' + m.status + ' ' + m.reason + '\r\n';
   }
   else {
-    s = m.method + ' ' + m.uri + ' SIP/' + m.version + '\r\n';
+    s = m.method + ' ' + stringifyUri(m.uri) + ' SIP/' + stringifyVersion(m.version) + '\r\n';
   }
 
   for(var n in m.headers) {
@@ -253,22 +311,28 @@ function makeResponse(rq, status, reason) {
   };
 }
 
+exports.makeResponse = makeResponse;
+
 function makeStreamParser(stream, onMessage) {
   var m;
   var r = '';
   
   function headers(data) {
     r += data;
-    var a = r.split(/\r\n\r\n/);
+    var a = r.match(/^\s*([\S\s]*)\r\n\r\n([\S\s]*)$/);
 
-    if(a.length > 1) {
-      m = parse(a[0]);
-      a.shift();
-      r = a.join('\r\n\r\n');
-
-      if(m && m.headers['content-length']) {
-        state = content;
-        content('');
+    if(a) {
+      r = a[2];
+      try {
+        m = parse(a[1]);
+      
+        if(m && m.headers['content-length']) {
+          state = content;
+          content('');
+        }
+      }
+      catch(e) {
+        sys.debug('Error: ' + e + 'while parsing:\n' + a[1]);  
       }
     }
   }
@@ -276,7 +340,7 @@ function makeStreamParser(stream, onMessage) {
   function content(data) {
     r += data;
 
-    if(r.length >= +m.headers['content-length']) {
+    if(r.length >= m.headers['content-length']) {
       m.content = r.substring(0, m.headers['content-length']);
       onMessage(m, {protocol: 'TCP', address: stream.remoteAddress, port: stream.remotePort});
       var s = r.substring(m.headers['content-length']);
@@ -299,17 +363,17 @@ function makeDgramParser(socket, onMessage) {
     var r=/^([\S\s]*)\r\n\r\n([\S\s]*)/.exec(s.toString('ascii'));
 
     if(r) {
-      var m = parse(r[1]);
+        var m = parse(r[1]);
       
-      if(m.headers['content-length']) {
-        var c = Math.max(0, Math.min(m.headers['content-length'], r[2].length));
-        m.content = r[2].substring(0, c);
-      }
-      else {
-        m.content = r[2];
-      }
+        if(m.headers['content-length']) {
+          var c = Math.max(0, Math.min(m.headers['content-length'], r[2].length));
+          m.content = r[2].substring(0, c);
+        }
+        else {
+          m.content = r[2];
+        }
       
-      onMessage(m, {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
+        onMessage(m, {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
     }
   });
 }
@@ -380,7 +444,7 @@ function makeTransport(options) {
 
     stream.on('error', onError);
   
-    return makeConnection(stream);
+    return initConnection(stream, options.onMessage);
   }
 
   function connGet(target) {
@@ -400,14 +464,12 @@ function makeTransport(options) {
   function send(message, target) {
     fixMessageForSentBy(message, target);
 
-    sys.debug(sys.inspect(target));
-
-    if(target.protocol === 'UDP') {
+    if(target.protocol.toUpperCase() === 'UDP') {
       var str = stringify(message);
       udpSocket.send(new Buffer(str),0,str.length, target.port, target.address);
     }
     else {
-      (connGet(target) || connOpen(target, isRequest(message) && function() { options.onMessage(makeResponse(message, 503)) }))(stringify(message));
+      (connGet(target) || connOpen(target, message.method && function() { options.onMessage(makeResponse(message, 503)) }))(stringify(message));
     }
   }
 
@@ -416,4 +478,370 @@ function makeTransport(options) {
 
 exports.makeTransport = makeTransport;
 exports.makeResponse = makeResponse;
+
+function makeSM() {
+  var state;
+
+  return {
+    enter: function(newstate) {
+      if(state && state.leave)
+        state.leave();
+      
+      state = newstate;
+      Array.prototype.shift.apply(arguments);
+      if(state.enter) 
+        state.enter.apply(this, arguments);
+    },
+    signal: function(s) {
+      if(state && state[s]) 
+        state[Array.prototype.shift.apply(arguments)].apply(state, arguments);
+    }
+  };
+}
+
+function resolve(uri, action) {
+  if(uri.host.match(/^\d{1,3}(\.\d{1,3}){3}$/))
+    return action([{protocol: uri.params.transport || 'UDP', address: uri.host, port: uri.port || 5060}]);
+
+  var protocols = uri.params.protocol ? [uri.params.protocol] : ['UDP', 'TCP'];
+  dns.resolve4(uri.host, function(err, address) {
+    address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
+      .reduce(function(arr,v) { return arr.concat(v); }, []);
+    action(address);
+  });
+}
+
+function resolveTransaction(rq, transaction, tu) {
+  if(rq.remote)
+    return transaction(rq, rq.remote, transport, tu);
+
+  resolve(parseUri(rq.uri), function(address) {
+    var onresponse;
+    
+    address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
+      .reduce(function(arr,v) { return arr.concat(v); }, []);
+
+    function next() {
+      onresponse = next;
+      if(address.length > 0)
+        transaction(rq, address.shift(), transport, function(rs) { onresponse(rs); });
+      else
+        tu(makeResponse(rq, 404));
+    }
+
+    function searching(rs) {
+      if(rs.status === 503)
+        next();
+      else if(rs.status > 100) {
+        onresponse = tu;
+      }
+        
+      tu(rs);
+    }
+
+    next();
+  });
+}
+
+exports.resolve = resolve;
+
+//transaction layer
+function generateBranch() {
+  return ['z9hG4bK',Math.round(Math.random()*1000000)].join('');
+}
+
+exports.generateBranch = generateBranch;
+
+function makeTransactionLayer(options) {
+  var transactions = {};
+
+  function makeTransactionId(m) {
+    if(m.method === 'ACK')
+      return ['INVITE', m.headers['call-id'], m.headers.via[0].params.branch].join(';');
+
+    return [m.headers.cseq.method, m.headers['call-id'], m.headers.via[0].params.branch].join(';');
+  }
+
+  function createInviteServerTransaction(rq, remote, transport, tu) {
+    var id = makeTransactionId(rq);
+    var sm = makeSM();
+    var rs;
+    
+    var proceeding = {
+      message: function() { 
+        if(rs) transport(rs, remote);
+      },
+      send: function(message) {
+        rs = message;
+
+        if(message.status >= 300)
+          sm.enter(completed);
+        else if(message.status >= 200)
+          sm.enter(succeeded);
+      
+        transport(rs, remote);
+      }
+    }
+
+    var g, h;
+    var completed = {
+      enter: function () {
+        g = setTimeout(function retry(t) { 
+            setTimeout(retry, t*2, t*2);
+            transport(rs, remote)
+        });
+        h = setTimeout(sm.enter.bind(sm, terminated), 32000);
+      },
+      leave: function() {
+        clearTimeout(g);
+        clearTimeout(h);
+      },
+      message: function(m) {
+        if(m.method === 'ACK')
+          sm.enter(confirmed)
+        else
+          transport(rs, remote);
+      }
+    }
+
+    var confirmed = { enter: function() { setTimeout(sm.enter.bind(sm, terminated), 5000); } };
+
+    var succeeded = { enter: function() { sm.timeout(sm.enter.bind(sm, terminated), 5000);} };
+
+    var terminated = { enter: function() { delete transactions[id]; } };
+  
+    sm.enter(proceeding);
+
+    transactions[id] = {onMessage: sm.signal.bind(sm, 'message'), send: sm.signal.bind(sm, 'send')};
+
+    tu(rq, remote);
+  }
+
+  function createServerTransaction(rq, remote, transport, tu) {
+    var id = makeTransactionId(rq);
+    var sm = makeSM();
+    var rs;
+
+    var trying = {
+      message: function() { if(rs) transport(rs, remote); },
+      send: function(message) {
+        rs = message;
+        transport(message, remote);
+        if(message.status >= 200)
+          sm.enter(completed);
+      }
+    } 
+
+    var completed = {
+      message: function() { transport(rs, remote); },
+      enter: function() {
+        setTimeout(function() { delete transactions[id]; }, 32000);
+      }
+    }
+
+    sm.enter(trying);
+
+    transactions[id] = {
+      onMessage: sm.signal.bind(sm, 'message'),
+      send: sm.signal.bind(sm, 'send')
+    };
+
+    tu(rq, remote);
+  }
+
+  function createInviteClientTransaction(rq, remote, transport, tu) {
+    rq.headers.via.unshift({params: {branch: generateBranch()}});
+    var id = makeTransactionId(rq);
+    var sm = makeSM();
+
+    var a;
+    var b;
+    var calling = {
+      enter: function() {
+        a = setTimeout(function resend(t) {
+          transport(rq, remote);
+          a = setTimeout(resend, t*2, t*2);
+        }, 500, 500);
+        
+        b = setTimeout(function() {
+          tu(makeResponse(rq, 503));
+          sm.enter(terminated);
+        }, 32000);
+      },
+      leave: function() {
+        clearTimeout(a);
+        clearTimeout(b);
+      },
+      message: function(message) {
+        tu(message);
+
+        if(message.status < 200) {
+          sm.enter(proceeding);
+        }
+        else if(message.status < 300) {
+          sm.enter(terminated);
+        }
+        else {
+          sm.enter(completed, message);
+        }
+      }
+    };
+
+    var proceeding = {
+      message: function(message) {
+        tu(message);
+        if(message.status >= 200) {
+          if(message.status < 300)
+            sm.enter(terminated);
+          else
+            sm.enter(completed, message);
+        }
+      }
+    };
+
+    var ack;
+    var completed = {
+      enter: function(rs) {
+        ack = {
+          method: 'ACK',
+          uri: rq.uri,
+          headers: {
+            to: rs.headers.to,
+            from: rq.headers.from,
+            cseq: {method: 'ACK', seq: rq.headers.cseq.seq},
+            'call-id': rq.headers['call-id'],
+            via: [rq.headers.via[0]]
+          }
+        };
+
+        transport(ack, remote);
+
+        setTimeout(sm.enter.bind(sm, terminated), 32000);
+      },
+      message: function(message) {
+        transport(ack, remote);
+      }
+    };
+
+    var terminated = {enter: function() { delete transactions[id]; }};
+  
+    transactions[id] = {onMessage: sm.signal.bind(sm, 'message')};
+ 
+    sm.enter(calling);
+ 
+    transport(rq, remote);    
+  }
+  
+  function createClientTransaction(rq, remote, transport, tu) {  
+    rq.headers.via.unshift({params: {branch: generateBranch()}});
+    var id = makeTransactionId(rq);
+    var sm = makeSM();
+  
+    var e;
+    var f;
+    var trying = {
+      enter: function() {
+        e = setTimeout(function() { sm.signal('timerE', 500); }, 500);
+        f = setTimeout(function() { sm.signal('timerF'); }, 32000);
+      },
+      leave: function() {
+        clearTimeout(e);
+        clearTimeout(f);
+      },
+      message: function(message, remote) {
+        tu(message, remote);
+        if(message.status >= 200)
+          sm.enter(completed);
+        else
+          sm.enter(proceeding);
+      },
+      timerE: function(t) {
+        transport(rq, remote);
+        e = setTimeout(function() { sm.signal('timerE', t*2); }, t*2);
+      },
+      timerF: function() {
+        tu(makeResponse(rq, 503));
+        sm.enter(terminated);
+      }
+    };
+
+    var proceeding = trying;
+
+    var completed = {
+      enter: function (){
+        setTimeout(function() { sm.enter(terminated); }, 5000);
+      }
+    };
+
+    var terminated = {
+      enter: function() { delete transactions[id]; }
+    };
+
+    sm.enter(trying);
+    transport(rq, remote);
+
+    transactions[id] = { onMessage: sm.signal.bind(sm, 'message') };
+  }
+
+  function onMessage(message, remote) {
+    var trn = transactions[makeTransactionId(message)];
+
+    if(trn) {
+      trn.onMessage(message, remote);
+    }
+    else if(message.method) {
+      switch(message.method) {
+      case 'INVITE':
+        createInviteServerTransaction(message, remote, options.transport, options.onMessage);
+        break;
+      case 'ACK':
+        options.onMessage(message, remote);
+        break;
+      default:
+        createServerTransaction(message, remote, options.transport, options.onMessage);
+        break;
+      }
+    }
+  }
+
+  function send(message, callback) {
+    if(message.method) {
+      switch(message.method) {
+      case 'INVITE':
+        resolveTransaction(message, createInviteClientTransaction, options.transport, callback);
+        break;
+      case 'ACK':
+        break;
+      default:
+        resolveTransaction(message, createClientTransaction, options.transport, callback);
+        break;
+      } 
+    }
+    else {
+      var trn = transactions[makeTransactionId(message)];
+      if(trn)
+        trn.send(message);
+    }
+  }
+
+  return {send: send, onMessage: onMessage};
+}
+
+exports.makeTransactionLayer = makeTransactionLayer;
+
+exports.start = function(options) {
+  var transport = makeTransport({
+    listeners: options.listeners,
+    onMessage: function(m,r) {
+      transaction.onMesage(m,r);
+    }
+  });
+
+  var transaction = makeTransactionLayer({
+    transport: function(m,r) { transport.send(m,r) },
+    onMessage: options.onMessage
+  });
+
+  return {send: transaction.send, close: transport.close};
+}
 
