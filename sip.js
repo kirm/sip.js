@@ -2,11 +2,19 @@
 
 var sys = require('sys');
 var net = require('net');
-var dgram = require('dgram');
+var udp = require('./udp.js');
 var dns = require('dns');
 
+function debug(e) {
+  if(e.stack) {
+    sys.debug(e + '\n' + e.stack);
+  }
+  else
+    sys.debug(sys.inspect(e));
+}
+
 function parseResponse(rs, m) {
-  var r = rs.match(/^SIP\/(\d\.\d)\s+(\d+)\s*(.*)\s*$/);
+  var r = rs.match(/^SIP\/(\d+\.\d+)\s+(\d+)\s*(.*)\s*$/);
 
   if(r) {
     m.version = r[1];
@@ -146,8 +154,9 @@ function parse(data) {
   for(var i = 1; i < data.length; ++i) {
     var r = data[i].match(/^([\w\-.!%*_+`'~]+)\s*:\s*([\s\S]*)$/);
 
-    if(!r)
+    if(!r) {
       return;
+    }
 
     var name = r[1].toLowerCase();
     name = compactForm[name] || name;
@@ -313,26 +322,21 @@ function makeResponse(rq, status, reason) {
 
 exports.makeResponse = makeResponse;
 
-function makeStreamParser(stream, onMessage) {
+function makeStreamParser(onMessage) {
   var m;
   var r = '';
   
   function headers(data) {
     r += data;
-    var a = r.match(/^\s*([\S\s]*)\r\n\r\n([\S\s]*)$/);
+    var a = r.match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
 
     if(a) {
       r = a[2];
-      try {
-        m = parse(a[1]);
-      
-        if(m && m.headers['content-length']) {
-          state = content;
-          content('');
-        }
-      }
-      catch(e) {
-        sys.debug('Error: ' + e + 'while parsing:\n' + a[1]);  
+      m = parse(a[1]);
+
+      if(m && m.headers['content-length'] !== undefined) {
+        state = content;
+        content('');
       }
     }
   }
@@ -342,7 +346,9 @@ function makeStreamParser(stream, onMessage) {
 
     if(r.length >= m.headers['content-length']) {
       m.content = r.substring(0, m.headers['content-length']);
-      onMessage(m, {protocol: 'TCP', address: stream.remoteAddress, port: stream.remotePort});
+      
+      onMessage(m);
+      
       var s = r.substring(m.headers['content-length']);
       state = headers;
       r = '';
@@ -351,36 +357,154 @@ function makeStreamParser(stream, onMessage) {
   }
 
   var state=headers;
-  stream.on('data', function(data) { state(data); });
-  stream.on('end', function() {
-    state('');
-    stream.end();
-  });
+
+  return function(data) { state(data); }
 }
 
-function makeDgramParser(socket, onMessage) {
-  socket.on('message', function(s,rinfo) {
-    var r=/^([\S\s]*)\r\n\r\n([\S\s]*)/.exec(s.toString('ascii'));
+function parseMessage(s) {
+  var r=/^([\S\s]*?)\r\n\r\n([\S\s]*)/.exec(s.toString('ascii'));
 
-    if(r) {
-        var m = parse(r[1]);
-      
-        if(m.headers['content-length']) {
-          var c = Math.max(0, Math.min(m.headers['content-length'], r[2].length));
-          m.content = r[2].substring(0, c);
-        }
-        else {
-          m.content = r[2];
-        }
-      
-        onMessage(m, {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
+  if(r) {
+    var m = parse(r[1]);
+
+    if(m.headers['content-length']) {
+      var c = Math.max(0, Math.min(m.headers['content-length'], r[2].length));
+      m.content = r[2].substring(0, c);
     }
+    else {
+      m.content = r[2];
+    }
+      
+    return m;
+  }
+}
+
+function makeTcpTransport(listeners, onMessage, fix) {
+  var connections = {};
+  
+  function makeId(target) { return [target.address, target.port].join('-'); };
+
+  function init(stream, port, address) {
+    var id = makeId({address: address, port: port});
+
+    stream.setEncoding('ascii');
+  
+    stream.on('data', makeStreamParser(function(m) {onMessage(m, {protocol: 'TCP', address: address, port: port});}));
+    stream.on('error', function() { delete connections[id]; });
+    stream.on('close', function() { delete connections[id]; });
+    stream.on('end', function() { 
+      stream.end();
+      delete connections[id];
+    });
+
+    stream.on('timeout', function() { stream.end(id); });
+    stream.setTimeout(30000);
+     
+    var local = {protocol: 'TCP', address: stream.address().address, port: stream.address().port};
+
+    return connections[id] = function(message) { stream.write(stringify(fix(message,local)));}
+  }
+
+  var servers = listeners.map(function(l) {
+    var server = net.createServer(function(stream) { init(stream, stream.remotePort, stream.remoteAddress); });
+    server.listen(l.port, l.address);
+    return server;
   });
+
+  function open(target) {
+    var stream = net.createConnection(target.port, target.address);
+    var pending = [];
+
+    stream.on('error', function() {
+      pending.forEach(function(m) {
+        if(m.method)
+          onMessage(makeResponse(m, 503));
+      });
+      delete connections[makeId(target)];
+    });
+
+    stream.on('connect', function() {
+      pending.forEach(init(stream, target.port, target.address));
+      pending = [];
+    });
+
+    return connections[makeId(target)] = function(message) { pending.push(message) };
+  }
+
+  return {
+    send: function(target, message) { (connections[makeId(target)] || open(target))(message) },
+    close: function() { servers.forEach(function(a) { a.close(); });}
+  }
+}
+
+function makeUdpTransport(listeners, onMessage, fix) {
+  var connections = {};
+
+  function listener(message, rinfo) {
+    try {
+      var m = parseMessage(message.toString('ascii', 0, rinfo.size));
+      if(m) onMessage(m, {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
+    }
+    catch(e) {
+      debug(e);
+    }
+  }
+
+  var servers = listeners.map(function(l) {
+    var socket = udp.createSocket(listener);
+    socket.bind(l.port, l.address);
+    return socket;
+  });
+
+  function open(target) {
+    var socket = udp.createSocket(listener);
+    socket.connect(target.port, target.address);
+    socket.timestamp = new Date(); 
+    
+    connections[[target.address, target.port].join()] = socket;
+    
+    socket.on('close', function() { delete connections[[target.address, target.port].join()]; });
+    socket.on('error', function() {
+      if(socket.lastRequest)
+        onMessage(makeResponse(socket.lastRequest, 503), {protocol: 'UDP', address: target.address, port: target.port});
+      
+      socket.close();
+    });
+    
+    return socket;
+  }
+
+  var timer = setInterval(function() { 
+    var now = new Date(); 
+    Object.keys(connections).forEach(function(c) {
+      var cn = connections[c];
+      if(now - cn.timestamp > 30000)
+        cn.close();
+    });
+  }, 30000);
+
+  return {
+    send: function(target, message) {
+      var socket = connections[[target.address, target.port].join()] || open(target);
+      socket.timestamp = new Date(); 
+     
+      if(message.method) socket.lastRequest = message;
+
+      var s = stringify(fix(message, {protocol: 'UDP', address: socket.address().address, port: socket.address().port}));
+      socket.send(new Buffer(s), 0, s.length);
+    },
+    close: function() {
+      clearTimeout(timer);
+      servers.forEach(function(x) { x.close(); });
+      connections.forEach(function(x) { x.close(); });
+    }
+  }
 }
 
 //  Options: {
-//    listeners: [ {protocol: 'UDP', port: 5060}, { protocol: 'TCP', port: 5060, address: '172.16.1.2' }],
-//    sentBy: '172.16.1.2' // sentBy: function(remoteAddress) { if(remoteAddress.match(/^192\.168\./)) return '172.16.1.2'; return '80.34.54.15'; }
+//    udp: true, 
+//    tcp: true,
+//    port: 5060,
 //    onMessage: function(message, sender) {} 
 //  }
 //  return {
@@ -388,92 +512,38 @@ function makeDgramParser(socket, onMessage) {
 //    close: function()
 //  }
 function makeTransport(options) {
-  var connections = {};
-
-  function initConnection(stream, onMessage) {
-    stream.setEncoding('ascii');
-
-    var id = ['TCP', stream.remoteAddress, stream.remotePort].join(';');
-    connections[id] = stream.write.bind(stream);
-
-    stream.on('timeout', function() {
-      delete connections[id];
-      stream.end();
-    });
-
-    stream.setTimeout(30000);
-
-    makeStreamParser(stream, onMessage);
-
-    return connections[id];
+  function fix(m, socket) {
+    if(m.method) {
+      var via = m.headers.via[0];
+      via.protocol = socket.protocol;
+      via.host = socket.address;
+      via.port = 5060;
+    }
+    return m;
   }
 
-  function makeTcpServer(port, address, onMessage) {
-    var server = net.createServer(function(stream) { initConnection(stream, onMessage) });
-    server.listen(port, address);
-    return server;
-  }
-  
-  function makeUdpServer(port, address, onMessage) {
-    var socket = dgram.createSocket('udp4');
-    
-    makeDgramParser(socket, onMessage);
+  var u = makeUdpTransport([{port: 5060}], options.onMessage, fix);
+  var t = makeTcpTransport([{port: 5060}], options.onMessage, fix);
 
-    socket.bind(port, address);
-
-    return socket;
-  }
-
-  var udpSocket;
-
-  var servers = options.listeners.map(function(l) {
-      switch(l.protocol) {
+  return {
+    send: function(message, target) {
+      switch(target.protocol.toUpperCase()) {
       case 'UDP':
-        return (udpSocket = makeUdpServer(l.port, l.address, options.onMessage));
+        u.send(target, message);
+        break;
       case 'TCP':
-        return makeTcpServer(l.port, l.address, options.onMessage); 
+        t.send(target, message);
+        break;
+      default:
+        if(message.method) options.onMessage(makeResponse(message, 503));
+        break;
       }
-  });
-
-  function close() {
-    servers.forEach(function(s) { try { s.close(); } catch(e) {} });
-  }
-
-  function connOpen(target, onError) {
-    var stream = net.createConnection(target.port, target.addres);
-
-    stream.on('error', onError);
-  
-    return initConnection(stream, options.onMessage);
-  }
-
-  function connGet(target) {
-    return connections[[target.protocol, target.address, target.port].join(';')];
-  }
-
-  function fixMessageForSentBy(message, target) {
-    var sentBy = (typeof options.sentBy === 'function') ? options.sentBy(target) : options.sentBy;
-
-    if(message.method) {
-      message.headers.via[0].protocol = target.protocol;
-      message.headers.via[0].host = sentBy.host;
-      message.headers.via[0].port = sentBy.port;
-    }
-  }
-
-  function send(message, target) {
-    fixMessageForSentBy(message, target);
-
-    if(target.protocol.toUpperCase() === 'UDP') {
-      var str = stringify(message);
-      udpSocket.send(new Buffer(str),0,str.length, target.port, target.address);
-    }
-    else {
-      (connGet(target) || connOpen(target, message.method && function() { options.onMessage(makeResponse(message, 503)) }))(stringify(message));
-    }
-  }
-
-  return { close: close, send: send };
+    },
+    close: function() { 
+      u.close();
+      t.close(); 
+    } 
+  };
 }
 
 exports.makeTransport = makeTransport;

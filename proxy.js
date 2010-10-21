@@ -40,22 +40,28 @@ function proxyResponse(transport, rs) {
 }
 
 function proxyCore(transport, router, message, remote) {
-  if(message.method) {
-    message.headers.via[0].params.received=remote.address;
-    router.call({
-      proxy: function(target) {
-        return proxyRequest(transport, message, target); 
-      },
-      respond: function(rs) {
-        if(typeof rs === 'number')
-          rs = sip.makeRespose(message, rs);
+  try {
+    if(message.method) {
+      message.headers.via[0].params.received=remote.address;
+//      message.headers.via[0].params.rport=remote.port;
+      router.call({
+        proxy: function(target) {
+          return proxyRequest(transport, message, target); 
+        },
+        respond: function(rs) {
+          if(typeof rs === 'number')
+            rs = sip.makeRespose(message, rs);
 
-        transport(rs, {protocol: rs.headers.via[0].protocol, address: remote.address, port: rq.headers.via[0].port});
-      }
-    }, message, remote);
+          transport(rs, {protocol: rs.headers.via[0].protocol, address: remote.address, port: rq.headers.via[0].port});
+        }
+      }, message, remote);
+    }
+    else
+      proxyResponse(transport, message);
+  } 
+  catch(e) {
+    sys.debug(e + e.stack);
   }
-  else
-    proxyResponse(transport, message);
 }
 
 function route(rq, remote) {
@@ -69,14 +75,12 @@ function route(rq, remote) {
     var uri = sip.parseUri(rq.uri);
     uri.host = '172.16.1.2';
     uri.port = 5060;
-    uri.params.transport = 'udp';
+    uri.params.transport = remote.protocol.toLowerCase();
     this.proxy(uri);
   }
 }
 
 var transport = sip.makeTransport({
-  listeners: [{protocol: 'UDP', address: '0.0.0.0', port: '5060'}],
-  sentBy: {host: '172.16.1.3', port: '5060'},
   onMessage: proxyCore.bind(this, function() { transport.send.apply(transport, arguments); }, route)
 });
 
