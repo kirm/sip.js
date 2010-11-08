@@ -58,8 +58,8 @@ function Socket(listener) {
 utils.inherits(Socket, events.EventEmitter);
 exports.Socket = Socket;
 
-exports.createSocket = function (type, listener) {
-  return new Socket(type, listener);
+exports.createSocket = function (listener) {
+  return new Socket(listener);
 };
 
 Socket.prototype.bind = function(port, address) {

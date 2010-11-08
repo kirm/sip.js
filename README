@@ -1,0 +1,71 @@
+sip.js is a SIP stack for node.js. It implements tranaction and transport layers as described in RFC3261. 
+
+1. API
+
+1.1 High Level API
+
+start(options, callback);
+
+  Creates and returns an instance of stack. 'options' is an object containing following properties:
+    port - port to be listened. Optional, default value: 5060
+    address - local address to be listened. Optional, by default all local addresses are listened.
+
+  'callback' will be called on SIP message arrival as 'callback(message, remotePeer)'.
+
+  Returns stack object containing
+
+  stack.send(message[,callback]) - sends SIP message transactionally. If message is a request then transaction is created. 
+    If message is a response, then server transaction is looked up and message forwarded to it.
+    Optional callback parameter is used with requests to handle responses.
+
+  stack.destroy - destroys stack.
+
+1.2 Low Level API
+
+1.2.1 Parser
+
+sip.parse(string)
+
+  parses SIP message from string.
+
+sip.strigify(object) 
+
+  stringifies parsed message
+
+sip.parseURI(string)
+sip.strigifyURI(object)
+
+  parse/stringify sip uris
+
+1.2.2 Transport
+
+makeTransport(options, onmessage);
+
+  creates and returns an instance of transport layer. 
+
+  options.port - port to be listened. Optional, default 5060
+  options.address - interface to listen on. If omited, all interfaces are used.
+
+  onmessage will be called on SIP message arrival as 'onmessage(message, remotePeer)'
+
+  returns transport object with following methods
+
+transport.open 
+
+transport.destroy
+
+1.2.3 Transactions
+
+makeTrasactionLayer(options, transport)
+
+transactions.createClientTransaction(request, callback);
+
+transactions.createServerTransaction(request, remotePeer);
+
+transactions.get(message)
+
+1.2.4 Helpers
+
+resolve(parseUri)
+
+

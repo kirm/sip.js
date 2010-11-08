@@ -4,6 +4,7 @@ var sys = require('sys');
 var net = require('net');
 var udp = require('./udp.js');
 var dns = require('dns');
+var assert = require('assert');
 
 function debug(e) {
   if(e.stack) {
@@ -379,175 +380,170 @@ function parseMessage(s) {
   }
 }
 
-function makeTcpTransport(listeners, onMessage, fix) {
-  var connections = {};
-  
-  function makeId(target) { return [target.address, target.port].join('-'); };
+function makeTcpTransport(options, callback) {
+  var connections = Object.create(null);
 
-  function init(stream, port, address) {
-    var id = makeId({address: address, port: port});
-
+  function init(stream, remote) {
     stream.setEncoding('ascii');
-  
-    stream.on('data', makeStreamParser(function(m) {onMessage(m, {protocol: 'TCP', address: address, port: port});}));
-    stream.on('error', function() { delete connections[id]; });
+
+    var id = [remote.address, remote.port].join();
+    var that = {
+      stream: stream,
+      pending: [],
+      refs: 0,
+      local: local,
+    };
+    connections[id] = that;
+    
+    stream.on('data', makeStreamParser(function(m) { callback(m, remote); }));
     stream.on('close', function() { delete connections[id]; });
-    stream.on('end', function() { 
-      stream.end();
-      delete connections[id];
-    });
+    stream.on('error', function() {});
+    stream.setTimeout(stream.end.bind(stream), 60000);
+    
+    var local = stream.address();
+    local.protocol = 'TCP';
 
-    stream.on('timeout', function() { stream.end(id); });
-    stream.setTimeout(30000);
-     
-    var local = {protocol: 'TCP', address: stream.address().address, port: stream.address().port};
-
-    return connections[id] = function(message) { stream.write(stringify(fix(message,local)));}
+    return that;
   }
 
-  var servers = listeners.map(function(l) {
-    var server = net.createServer(function(stream) { init(stream, stream.remotePort, stream.remoteAddress); });
-    server.listen(l.port, l.address);
-    return server;
+  function send(cn, m) {
+    if(cn.stream.readyState === 'opening')
+      cn.pending.push(m);
+    else try {
+        cn.stream.write(stringify(m));
+      } 
+      catch(e) {
+        cn.stream.emit('error', e);
+      }
+  }
+
+  function open(remote) {
+    var cn = init(net.createConnection(remote.port, remote.address));
+
+    cn.stream.on('connect',function() {
+      cn.pending.forEach(send.bind(null, cn));  
+    });
+
+    return cn;
+  }
+  
+  function release(cn) {
+    if(--cn.refs === 0 && cn.stream.readyState === 'writeOnly') {
+      cn.stream.end();
+    }
+  }
+  
+  var server = net.createServer(function(stream) {
+    init(stream, {protocol: 'TCP', address: stream.remoteAddress, port: stream.remotePort});
   });
 
-  function open(target) {
-    var stream = net.createConnection(target.port, target.address);
-    var pending = [];
-
-    stream.on('error', function() {
-      pending.forEach(function(m) {
-        if(m.method)
-          onMessage(makeResponse(m, 503));
-      });
-      delete connections[makeId(target)];
-    });
-
-    stream.on('connect', function() {
-      pending.forEach(init(stream, target.port, target.address));
-      pending = [];
-    });
-
-    return connections[makeId(target)] = function(message) { pending.push(message) };
-  }
-
+  server.listen(options.port || 5060, options.address);
+  
   return {
-    send: function(target, message) { (connections[makeId(target)] || open(target))(message) },
-    close: function() { servers.forEach(function(a) { a.close(); });}
+    open: function(remote, error, dontopen) {
+      assert.ok(!error || typeof error === 'function');
+
+      var cn = connections[[remote.address,remote.port].join()];
+      
+      if(!cn && dontopen) return null;
+      
+      if(error) cn.stream.on('error', error);
+
+      ++cn.refs;
+
+      return {
+        send: send.bind(null, cn),
+        release: function() {
+          if(error) cn.stream.removeListener('error',error);
+          release(cn);
+        }
+      }
+    },
+    destroy: function() {
+      server.close();
+    }
   }
 }
 
-function makeUdpTransport(listeners, onMessage, fix) {
-  var connections = {};
-
-  function listener(message, rinfo) {
+function makeUdpTransport(options, callback) {
+  var socket = udp.createSocket(function(data, rinfo) {
     try {
-      var m = parseMessage(message.toString('ascii', 0, rinfo.size));
-      if(m) onMessage(m, {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
+      var m = parseMessage(data);
+      callback(m, {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
     }
     catch(e) {
       debug(e);
     }
-  }
-
-  var servers = listeners.map(function(l) {
-    var socket = udp.createSocket(listener);
-    socket.bind(l.port, l.address);
-    return socket;
   });
 
-  function open(target) {
-    var socket = udp.createSocket(listener);
-    socket.connect(target.port, target.address);
-    socket.timestamp = new Date(); 
-    
-    connections[[target.address, target.port].join()] = socket;
-    
-    socket.on('close', function() { delete connections[[target.address, target.port].join()]; });
-    socket.on('error', function() {
-      if(socket.lastRequest)
-        onMessage(makeResponse(socket.lastRequest, 503), {protocol: 'UDP', address: target.address, port: target.port});
+  socket.bind(options.port || 5060, options.address);
+  
+  function openConnection(remote, error) {
+    var socket = udp.createSocket();
       
-      socket.close();
-    });
-    
-    return socket;
+    socket.connect(remote.port, remote.address);
+    socket.on('error', error);
+
+    var local = socket.address();
+    local.protocol = 'UDP';
+
+    return {
+      send: function(m) { 
+        var s = stringify(m);
+        socket.send(new Buffer(s), 0, s.length());
+      },
+      release: socket.close.bind(socket),
+      local: local 
+    } 
   }
-
-  var timer = setInterval(function() { 
-    var now = new Date(); 
-    Object.keys(connections).forEach(function(c) {
-      var cn = connections[c];
-      if(now - cn.timestamp > 30000)
-        cn.close();
-    });
-  }, 30000);
-
+ 
   return {
-    send: function(target, message) {
-      var socket = connections[[target.address, target.port].join()] || open(target);
-      socket.timestamp = new Date(); 
-     
-      if(message.method) socket.lastRequest = message;
-
-      var s = stringify(fix(message, {protocol: 'UDP', address: socket.address().address, port: socket.address().port}));
-      socket.send(new Buffer(s), 0, s.length);
-    },
-    close: function() {
-      clearTimeout(timer);
-      servers.forEach(function(x) { x.close(); });
-      connections.forEach(function(x) { x.close(); });
+    open: openConnection,
+    destroy: function() {
+      socket.close();
     }
   }
 }
 
-//  Options: {
-//    udp: true, 
-//    tcp: true,
-//    port: 5060,
-//    onMessage: function(message, sender) {} 
-//  }
-//  return {
-//    send: function(message, target),
-//    close: function()
-//  }
-function makeTransport(options) {
-  function fix(m, socket) {
-    if(m.method) {
-      var via = m.headers.via[0];
-      via.protocol = socket.protocol;
-      via.host = socket.address;
-      via.port = 5060;
-    }
-    return m;
-  }
-
-  var u = makeUdpTransport([{port: 5060}], options.onMessage, fix);
-  var t = makeTcpTransport([{port: 5060}], options.onMessage, fix);
+function makeTransport(options, callback) {
+  var protocols = {};
+  if(options.udp === undefined || options.udp)
+    protocols.UDP = makeUdpTransport(options, callback);
+  if(options.tcp === undefined || options.tcp)
+    protocols.TCP = makeTcpTransport(options, callback);
 
   return {
-    send: function(message, target) {
-      switch(target.protocol.toUpperCase()) {
-      case 'UDP':
-        u.send(target, message);
-        break;
-      case 'TCP':
-        t.send(target, message);
-        break;
-      default:
-        if(message.method) options.onMessage(makeResponse(message, 503));
-        break;
-      }
+    open: function(target, error) {
+      return protocols[target.protocol].open(target, error);
     },
-    close: function() { 
-      u.close();
-      t.close(); 
-    } 
+    destroy: function() { 
+      Object.keys(protocols).forEach(function(key) { protocols[key].destroy(); });
+    },
   };
 }
 
 exports.makeTransport = makeTransport;
-exports.makeResponse = makeResponse;
+
+function resolve(uri, action) {
+  if(uri.host.match(/^\d{1,3}(\.\d{1,3}){3}$/))
+    return action([{protocol: uri.params.transport || 'UDP', address: uri.host, port: uri.port || 5060}]);
+
+  var protocols = uri.params.protocol ? [uri.params.protocol] : ['UDP', 'TCP'];
+  dns.resolve4(uri.host, function(err, address) {
+    address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
+      .reduce(function(arr,v) { return arr.concat(v); }, []);
+    action(address);
+  });
+}
+
+exports.resolve = resolve;
+
+//transaction layer
+function generateBranch() {
+  return ['z9hG4bK',Math.round(Math.random()*1000000)].join('');
+}
+
+exports.generateBranch = generateBranch;
 
 function makeSM() {
   var state;
@@ -569,349 +565,321 @@ function makeSM() {
   };
 }
 
-function resolve(uri, action) {
-  if(uri.host.match(/^\d{1,3}(\.\d{1,3}){3}$/))
-    return action([{protocol: uri.params.transport || 'UDP', address: uri.host, port: uri.port || 5060}]);
-
-  var protocols = uri.params.protocol ? [uri.params.protocol] : ['UDP', 'TCP'];
-  dns.resolve4(uri.host, function(err, address) {
-    address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
-      .reduce(function(arr,v) { return arr.concat(v); }, []);
-    action(address);
-  });
-}
-
-function resolveTransaction(rq, transaction, tu) {
-  if(rq.remote)
-    return transaction(rq, rq.remote, transport, tu);
-
-  resolve(parseUri(rq.uri), function(address) {
-    var onresponse;
+function createInviteServerTransaction(transport, cleanup) {
+  var sm = makeSM();
+  var rs;
     
-    address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
-      .reduce(function(arr,v) { return arr.concat(v); }, []);
+  var proceeding = {
+    message: function() { 
+      if(rs) transport(rs);
+    },
+    send: function(message) {
+      rs = message;
 
-    function next() {
-      onresponse = next;
-      if(address.length > 0)
-        transaction(rq, address.shift(), transport, function(rs) { onresponse(rs); });
-      else
-        tu(makeResponse(rq, 404));
-    }
-
-    function searching(rs) {
-      if(rs.status === 503)
-        next();
-      else if(rs.status > 100) {
-        onresponse = tu;
-      }
-        
-      tu(rs);
-    }
-
-    next();
-  });
-}
-
-exports.resolve = resolve;
-
-//transaction layer
-function generateBranch() {
-  return ['z9hG4bK',Math.round(Math.random()*1000000)].join('');
-}
-
-exports.generateBranch = generateBranch;
-
-function makeTransactionLayer(options) {
-  var transactions = {};
-
-  function makeTransactionId(m) {
-    if(m.method === 'ACK')
-      return ['INVITE', m.headers['call-id'], m.headers.via[0].params.branch].join(';');
-
-    return [m.headers.cseq.method, m.headers['call-id'], m.headers.via[0].params.branch].join(';');
-  }
-
-  function createInviteServerTransaction(rq, remote, transport, tu) {
-    var id = makeTransactionId(rq);
-    var sm = makeSM();
-    var rs;
-    
-    var proceeding = {
-      message: function() { 
-        if(rs) transport(rs, remote);
-      },
-      send: function(message) {
-        rs = message;
-
-        if(message.status >= 300)
-          sm.enter(completed);
-        else if(message.status >= 200)
-          sm.enter(succeeded);
+      if(message.status >= 300)
+        sm.enter(completed);
+      else if(message.status >= 200)
+        sm.enter(succeeded);
       
-        transport(rs, remote);
-      }
+      transport(rs);
     }
+  }
 
-    var g, h;
-    var completed = {
-      enter: function () {
-        g = setTimeout(function retry(t) { 
-            setTimeout(retry, t*2, t*2);
-            transport(rs, remote)
-        });
-        h = setTimeout(sm.enter.bind(sm, terminated), 32000);
-      },
-      leave: function() {
-        clearTimeout(g);
-        clearTimeout(h);
-      },
-      message: function(m) {
-        if(m.method === 'ACK')
-          sm.enter(confirmed)
-        else
-          transport(rs, remote);
-      }
+  var g, h;
+  var completed = {
+    enter: function () {
+      g = setTimeout(function retry(t) { 
+        setTimeout(retry, t*2, t*2);
+        transport(rs)
+      }, 500, 500);
+      h = setTimeout(sm.enter.bind(sm, terminated), 32000);
+    },
+    leave: function() {
+      clearTimeout(g);
+      clearTimeout(h);
+    },
+    message: function(m) {
+      if(m.method === 'ACK')
+        sm.enter(confirmed)
+      else
+        transport(rs);
     }
-
-    var confirmed = { enter: function() { setTimeout(sm.enter.bind(sm, terminated), 5000); } };
-
-    var succeeded = { enter: function() { sm.timeout(sm.enter.bind(sm, terminated), 5000);} };
-
-    var terminated = { enter: function() { delete transactions[id]; } };
+  }
   
-    sm.enter(proceeding);
+  var confirmed = {enter: function() { setTimeout(sm.enter.bind(sm, terminated), 5000);} };
 
-    transactions[id] = {onMessage: sm.signal.bind(sm, 'message'), send: sm.signal.bind(sm, 'send')};
+  var succeeded = {
+    enter: function() { sm.timeout(sm.enter.bind(sm, terminated), 32000);},
+    send: function(m) { 
+      rs = m;
+      transport(rs);
+    }  
+  };
 
-    tu(rq, remote);
-  }
+  var terminated = {enter: cleanup};
+  
+  sm.enter(proceeding);
 
-  function createServerTransaction(rq, remote, transport, tu) {
-    var id = makeTransactionId(rq);
-    var sm = makeSM();
-    var rs;
+  return {send: sm.signal.bind(sm,'send'), message: sm.signal.bind(sm,'message')};
+}
 
-    var trying = {
-      message: function() { if(rs) transport(rs, remote); },
-      send: function(message) {
-        rs = message;
-        transport(message, remote);
-        if(message.status >= 200)
-          sm.enter(completed);
-      }
-    } 
+function createServerTransaction(transport, cleanup) {
+  var sm = makeSM();
+  var rs;
 
-    var completed = {
-      message: function() { transport(rs, remote); },
-      enter: function() {
-        setTimeout(function() { delete transactions[id]; }, 32000);
-      }
+  var trying = {
+    message: function() { if(rs) transport(rs); },
+    send: function(m) {
+      rs = m;
+      transport(m);
+      if(m.status >= 200) sm.enter(completed);
     }
+  }; 
 
-    sm.enter(trying);
+  var completed = {
+    message: function() { transport(rs); },
+    enter: function() { setTimeout(cleanup, 32000); }
+  };
 
-    transactions[id] = {
-      onMessage: sm.signal.bind(sm, 'message'),
-      send: sm.signal.bind(sm, 'send')
-    };
+  sm.enter(trying);
 
-    tu(rq, remote);
-  }
+  return {send: sm.signal.bind(sm, 'send'), message: sm.signal.bind(sm, 'message')};
+}
 
-  function createInviteClientTransaction(rq, remote, transport, tu) {
-    rq.headers.via.unshift({params: {branch: generateBranch()}});
-    var id = makeTransactionId(rq);
-    var sm = makeSM();
+function createInviteClientTransaction(rq, transport, tu, cleanup) {
+  var sm = makeSM();
 
-    var a;
-    var b;
-    var calling = {
-      enter: function() {
-        a = setTimeout(function resend(t) {
-          transport(rq, remote);
-          a = setTimeout(resend, t*2, t*2);
-        }, 500, 500);
+  var a, b;
+  var calling = {
+    enter: function() {
+      transport(rq);
+
+      a = setTimeout(function resend(t) {
+        transport(rq);
+        a = setTimeout(resend, t*2, t*2);
+      }, 500, 500);
         
-        b = setTimeout(function() {
-          tu(makeResponse(rq, 503));
-          sm.enter(terminated);
-        }, 32000);
-      },
-      leave: function() {
-        clearTimeout(a);
-        clearTimeout(b);
-      },
-      message: function(message) {
-        tu(message);
-
-        if(message.status < 200) {
-          sm.enter(proceeding);
-        }
-        else if(message.status < 300) {
-          sm.enter(terminated);
-        }
-        else {
-          sm.enter(completed, message);
-        }
-      }
-    };
-
-    var proceeding = {
-      message: function(message) {
-        tu(message);
-        if(message.status >= 200) {
-          if(message.status < 300)
-            sm.enter(terminated);
-          else
-            sm.enter(completed, message);
-        }
-      }
-    };
-
-    var ack;
-    var completed = {
-      enter: function(rs) {
-        ack = {
-          method: 'ACK',
-          uri: rq.uri,
-          headers: {
-            to: rs.headers.to,
-            from: rq.headers.from,
-            cseq: {method: 'ACK', seq: rq.headers.cseq.seq},
-            'call-id': rq.headers['call-id'],
-            via: [rq.headers.via[0]]
-          }
-        };
-
-        transport(ack, remote);
-
-        setTimeout(sm.enter.bind(sm, terminated), 32000);
-      },
-      message: function(message) {
-        transport(ack, remote);
-      }
-    };
-
-    var terminated = {enter: function() { delete transactions[id]; }};
-  
-    transactions[id] = {onMessage: sm.signal.bind(sm, 'message')};
- 
-    sm.enter(calling);
- 
-    transport(rq, remote);    
-  }
-  
-  function createClientTransaction(rq, remote, transport, tu) {  
-    rq.headers.via.unshift({params: {branch: generateBranch()}});
-    var id = makeTransactionId(rq);
-    var sm = makeSM();
-  
-    var e;
-    var f;
-    var trying = {
-      enter: function() {
-        e = setTimeout(function() { sm.signal('timerE', 500); }, 500);
-        f = setTimeout(function() { sm.signal('timerF'); }, 32000);
-      },
-      leave: function() {
-        clearTimeout(e);
-        clearTimeout(f);
-      },
-      message: function(message, remote) {
-        tu(message, remote);
-        if(message.status >= 200)
-          sm.enter(completed);
-        else
-          sm.enter(proceeding);
-      },
-      timerE: function(t) {
-        transport(rq, remote);
-        e = setTimeout(function() { sm.signal('timerE', t*2); }, t*2);
-      },
-      timerF: function() {
+      b = setTimeout(function() {
         tu(makeResponse(rq, 503));
         sm.enter(terminated);
+      }, 32000);
+    },
+    leave: function() {
+      clearTimeout(a);
+      clearTimeout(b);
+    },
+    message: function(message) {
+      tu(message);
+
+      if(message.status < 200) {
+        sm.enter(proceeding);
       }
-    };
-
-    var proceeding = trying;
-
-    var completed = {
-      enter: function (){
-        setTimeout(function() { sm.enter(terminated); }, 5000);
+      else if(message.status < 300) {
+         sm.enter(terminated);
       }
-    };
-
-    var terminated = {
-      enter: function() { delete transactions[id]; }
-    };
-
-    sm.enter(trying);
-    transport(rq, remote);
-
-    transactions[id] = { onMessage: sm.signal.bind(sm, 'message') };
-  }
-
-  function onMessage(message, remote) {
-    var trn = transactions[makeTransactionId(message)];
-
-    if(trn) {
-      trn.onMessage(message, remote);
-    }
-    else if(message.method) {
-      switch(message.method) {
-      case 'INVITE':
-        createInviteServerTransaction(message, remote, options.transport, options.onMessage);
-        break;
-      case 'ACK':
-        options.onMessage(message, remote);
-        break;
-      default:
-        createServerTransaction(message, remote, options.transport, options.onMessage);
-        break;
+      else {
+        sm.enter(completed, message);
       }
     }
-  }
+  };
 
-  function send(message, callback) {
-    if(message.method) {
-      switch(message.method) {
-      case 'INVITE':
-        resolveTransaction(message, createInviteClientTransaction, options.transport, callback);
-        break;
-      case 'ACK':
-        break;
-      default:
-        resolveTransaction(message, createClientTransaction, options.transport, callback);
-        break;
-      } 
+  var proceeding = {
+    message: function(message) {
+      tu(message);
+      if(message.status >= 200) {
+        if(message.status < 300)
+          sm.enter(terminated);
+        else
+          sm.enter(completed, message);
+      }
     }
-    else {
-      var trn = transactions[makeTransactionId(message)];
-      if(trn)
-        trn.send(message);
-    }
-  }
+  };
 
-  return {send: send, onMessage: onMessage};
+  var ack;
+  var completed = {
+    enter: function(rs) {
+      ack = {
+        method: 'ACK',
+        uri: rq.uri,
+        headers: {
+          to: rs.headers.to,
+          from: rq.headers.from,
+          cseq: {method: 'ACK', seq: rq.headers.cseq.seq},
+          'call-id': rq.headers['call-id'],
+          via: [rq.headers.via[0]]
+        }
+      };
+
+      transport(ack);
+
+      setTimeout(sm.enter.bind(sm, terminated), 32000);
+    },
+    message: function(message) {
+      transport(ack);
+    }
+  };
+
+  var terminated = {enter: cleanup};
+ 
+  sm.enter(calling);
+ 
+  return {message: sm.signal.bind(sm, 'message')};
+}
+
+function createClientTransaction(rq, transport, tu, cleanup) {  
+  var sm = makeSM();
+  
+  var e, f;
+  var trying = {
+    enter: function() { 
+      transport(rq);
+      e = setTimeout(function() { sm.signal('timerE', 500); }, 500);
+      f = setTimeout(function() { sm.signal('timerF'); }, 32000);
+    },
+    leave: function() {
+      clearTimeout(e);
+      clearTimeout(f);
+    },
+    message: function(message, remote) {
+      tu(message);
+      if(message.status >= 200)
+        sm.enter(completed);
+      else
+        sm.enter(proceeding);
+    },
+    timerE: function(t) {
+      transport(rq);
+      e = setTimeout(function() { sm.signal('timerE', t*2); }, t*2);
+    },
+    timerF: function() {
+      tu(makeResponse(rq, 503));
+      sm.enter(terminated);
+    }
+  };
+
+  var proceeding = trying;
+
+  var completed = {enter: function () { setTimeout(function() { sm.enter(terminated); }, 5000); } };
+
+  var terminated = {enter: cleanup};
+
+  sm.enter(trying);
+
+  return {message: sm.signal.bind(sm, 'message')};
+}
+
+function makeTransactionId(m) {
+  if(m.method === 'ACK')
+    return ['INVITE', m.headers['call-id'], m.headers.via[0].params.branch].join(';');
+  return [m.headers.cseq.method, m.headers['call-id'], m.headers.via[0].params.branch].join(';');
+}
+ 
+function makeTransactionLayer(options, transport) {
+  var transactions = Object.create(null);
+
+  return {
+    createServerTransaction: function(rq, remote) {
+      var id = makeTransactionId(rq);
+      var cn = transport(remote, function() {}, true);
+      return transactions[id] = (rq.method === 'INVITE' ? createInviteServerTransaction : createServerTransaction)(
+        cn.send.bind(cn),
+        function() { 
+          delete transactions[id];
+          cn.release();
+        });
+    },
+    createClientTransaction: function(rq, callback) {
+      rq.headers.via.unshift({params:{}});
+
+      resolve(parseUri(rq.uri), function(address) {
+        var onresponse;
+
+        function next() {
+          onresponse = searching;
+          if(address.length > 0) {
+            rq.headers.via[0].params.branch = generateBranch();
+            
+            var id = makeTransactionId(rq);
+
+            var cn = transport(address, function() {transactions[id].message(makeResponse(rq, 503));}); 
+            
+            transactions[id] = transaction(rq, cn.send.bind(cn), callback, function() { 
+              delete transactions[id];
+              cn.release();
+            });
+          }
+          else
+            callback(makeResponse(rq, 404));
+        }
+
+        function searching(rs) {
+          if(rs.status === 503)
+            next();
+          else if(rs.status > 100) {
+            onresponse = callback;
+        }
+        
+        callback(rs);
+      }
+
+      next();
+    });
+  },
+  get: function(m) {
+    return transactions[makeTransactionId(m)];
+  }};
 }
 
 exports.makeTransactionLayer = makeTransactionLayer;
 
-exports.start = function(options) {
-  var transport = makeTransport({
-    listeners: options.listeners,
-    onMessage: function(m,r) {
-      transaction.onMesage(m,r);
+exports.create = function(options, callback) {
+  var transport = makeTransport(options, function(m,remote) {
+    var t = transaction.get(m);
+
+    if(!t) {
+      if(m.method && m.method !== 'ACK') {
+        var t = transaction.createServerTransaction(m,remote);
+        callback(m,remote); 
+      }
+      else if(m.headers.cseq.method === 'INVITE' || m.method === 'ACK') {
+        callback(m,remote);
+      }
+    }
+    else {
+      t.message && t.message(m, remote);
     }
   });
+  
+  var transaction = makeTransactionLayer(options, transport.open.bind(transport));
 
-  var transaction = makeTransactionLayer({
-    transport: function(m,r) { transport.send(m,r) },
-    onMessage: options.onMessage
-  });
-
-  return {send: transaction.send, close: transport.close};
+  return {
+    send: function(m, callback) {
+      var t = transaction.get(m);
+      
+      if(t) {
+        t.send && t.send(m);
+      }
+      else {
+        if(m.method) {
+          if(m.method === 'ACK') {
+            resolve(parseUri(t.headers.contact[0]), function(address) {
+              if(address.length === 0) return;
+            
+              var cn = transport.open(address);
+              try {
+                cn.send(m);
+              } finally {
+                cn.release();
+              }
+            });
+          }
+          else {
+            return transaction.openClientTransaction(m, callback || function() {});
+          }
+        }
+      }
+    },
+    destroy: transport.destroy.bind(transport)
+  } 
 }
 
