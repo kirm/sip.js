@@ -1,8 +1,13 @@
-var utils = require('utils');
+var utils = require('util');
 
 var events = require('events');
 
+try {
+var IOWatcher    = process.binding('io_watcher').IOWatcher;
+} 
+catch(e) {
 var IOWatcher    = process.IOWatcher;
+}
 var binding      = process.binding('net');
 var socket       = binding.socket;
 var recvfrom     = binding.recvfrom;
@@ -39,7 +44,7 @@ function Socket(listener) {
       while(self.fd) {
         var p = getPool();
         var rinfo = recvfrom(self.fd, p, p.used, p.length-p.used, 0);
-        
+       
         if(!rinfo) return;
 
         self.emit('message', p.slice(p.used, p.used + rinfo.size), rinfo);
@@ -140,6 +145,10 @@ Socket.prototype.send = function(buffer, offset, length, callback) {
     callback(null, bytes);
   }
 };
+
+Socket.prototype.shutdown = function() {
+  binding.shutdown(this.fd, "readwrite"); 
+}
 
 Socket.prototype.close = function () {
   if (!this.fd) throw new Error('Not running');

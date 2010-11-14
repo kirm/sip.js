@@ -40,19 +40,48 @@ function proxyResponse(transport, rs) {
 }
 
 function proxyCore(transport, router, message, remote) {
+  var trn = transaction.get(message);
+
+  if(trn) {
+    trn.message(message);
+    return;
+  }
+
   try {
     if(message.method) {
       message.headers.via[0].params.received=remote.address;
-//      message.headers.via[0].params.rport=remote.port;
       router.call({
-        proxy: function(target) {
+        forward: function(target) {
           return proxyRequest(transport, message, target); 
+        },
+        transactForward: function(target) {
+          if(message.method === 'ACK')
+            return proxyRequest(transport, message, target);
+
+          var server = transaction.createServerTransaction(message, remote);
+          var client = transaction.createClientTransaction(
+            {
+              method:message.method,
+              uri: target,
+              headers: message.headers,
+              content: message.content
+            },
+            function(rs, remote) { 
+              rs.headers.via.shift();
+              server.send(rs);
+            }); 
         },
         respond: function(rs) {
           if(typeof rs === 'number')
             rs = sip.makeRespose(message, rs);
 
           transport(rs, {protocol: rs.headers.via[0].protocol, address: remote.address, port: rq.headers.via[0].port});
+        },
+        transactResponse: function(rs) {
+          if(typeof rs === 'number')
+            rs = sip.makeResponse(message, rs);
+         
+          transaction.createServerTransaction(message, remote).send(rs);
         }
       }, message, remote);
     }
@@ -65,22 +94,42 @@ function proxyCore(transport, router, message, remote) {
 }
 
 function route(rq, remote) {
-  if(remote.address == '172.16.1.2' && remote.port == 5060) {
-    this.proxy(sip.parseUri(rq.uri));
+  if(remote.address == '172.16.1.10' && remote.port == 5060) {
+    this.transactForward(sip.parseUri(rq.uri));
   }
-  else if(rq.method === 'REGISER') {
-    respond(403);
+  else if(rq.method === 'REGISTER') {
+    this.respond(403);
   }
   else {
     var uri = sip.parseUri(rq.uri);
-    uri.host = '172.16.1.2';
+    uri.host = '172.16.1.10';
     uri.port = 5060;
     uri.params.transport = remote.protocol.toLowerCase();
-    this.proxy(uri);
+    this.transactForward(uri);
+  }
+}
+
+function send(message, remote) {
+  var cn = transport.open(remote);
+  
+  try {
+    cn.send(message);
+  }
+  finally {
+    cn.release();
   }
 }
 
 var transport = sip.makeTransport({
-  onMessage: proxyCore.bind(this, function() { transport.send.apply(transport, arguments); }, route)
+  logger: {
+    send: function(m, remote) { sys.log(JSON.stringify(remote) + '--->>' + JSON.stringify(m)); },
+    recv: function(m, remote) { sys.log(JSON.stringify(remote) + '<<---' + JSON.stringify(m)); }
+  }
+},
+function(message, remote) {
+  //sys.debug(JSON.stringify(['recv', remote, message]));
+  proxyCore(send, route, message, remote);
 });
+
+var transaction = sip.makeTransactionLayer({}, transport.open.bind(transport));
 

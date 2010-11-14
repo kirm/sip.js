@@ -147,10 +147,12 @@ function parse(data) {
   if(data[0] === '')
     return;
 
-  var m = {headers:{}};
+  var m = {};
 
   if(!(parseResponse(data[0], m) || parseRequest(data[0], m)))
     return;
+
+  m.headers = {};
 
   for(var i = 1; i < data.length; ++i) {
     var r = data[i].match(/^([\w\-.!%*_+`'~]+)\s*:\s*([\s\S]*)$/);
@@ -169,6 +171,9 @@ function parse(data) {
 }
 
 function parseUri(s) {
+  if(typeof s === 'object')
+    return s;
+
   var re = /^(sips?):(?:([^\s>:@]+)(?::([^\s@>]+))?@)([\w\-\.]+)(?::(\d+))?((?:;[^\s=\?>;]+(?:=[^\s?\;]+)?)*)(\?([^\s&=>]+=[^\s&=>]+)(&[^\s&=>]+=[^\s&=>]+)*)?$/;
 
   var r = re.exec(s);
@@ -306,6 +311,8 @@ function stringify(m) {
   return s;
 }
 
+exports.stringify = stringify;
+
 function makeResponse(rq, status, reason) {
   return {
     status: status,
@@ -361,8 +368,10 @@ function makeStreamParser(onMessage) {
 
   return function(data) { state(data); }
 }
+exports.makeStreamParser = makeStreamParser;
 
 function parseMessage(s) {
+  sys.debug(s);
   var r=/^([\S\s]*?)\r\n\r\n([\S\s]*)/.exec(s.toString('ascii'));
 
   if(r) {
@@ -379,58 +388,59 @@ function parseMessage(s) {
     return m;
   }
 }
+exports.parse = parseMessage;
 
 function makeTcpTransport(options, callback) {
   var connections = Object.create(null);
 
   function init(stream, remote) {
-    stream.setEncoding('ascii');
+    var id = [remote.address, remote.port].join(),
+        local = {protocol: 'TCP', address: stream.address().address, port: stream.address().port},
+        pending = [],
+        refs = 0;
 
-    var id = [remote.address, remote.port].join();
-    var that = {
-      stream: stream,
-      pending: [],
-      refs: 0,
-      local: local,
-    };
-    connections[id] = that;
-    
-    stream.on('data', makeStreamParser(function(m) { callback(m, remote); }));
-    stream.on('close', function() { delete connections[id]; });
-    stream.on('error', function() {});
-    stream.setTimeout(stream.end.bind(stream), 60000);
-    
-    var local = stream.address();
-    local.protocol = 'TCP';
-
-    return that;
-  }
-
-  function send(cn, m) {
-    if(cn.stream.readyState === 'opening')
-      cn.pending.push(m);
-    else try {
-        cn.stream.write(stringify(m));
-      } 
-      catch(e) {
-        cn.stream.emit('error', e);
+    function send(m) {
+      try {
+        if(stream.readyState === 'opening')
+          pending.push(m);
+        else
+          stream.write(m, 'ascii');
       }
-  }
-
-  function open(remote) {
-    var cn = init(net.createConnection(remote.port, remote.address));
-
-    cn.stream.on('connect',function() {
-      cn.pending.forEach(send.bind(null, cn));  
-    });
-
-    return cn;
-  }
-  
-  function release(cn) {
-    if(--cn.refs === 0 && cn.stream.readyState === 'writeOnly') {
-      cn.stream.end();
+      catch(e) {
+        process.nextTick(stream.emit.bind(stream, 'error', e));
+      }
     }
+    
+    stream.setEncoding('ascii');
+    stream.on('data',     makeStreamParser(function(m) { callback(m, remote); }));
+    stream.on('close',    function() { delete connections[id]; });
+    stream.on('error',    function() {});
+    stream.on('end',      function() { if(refs === 0) stream.end(); });
+    stream.on('timeout',  function() { if(refs === 0) stream.end(); });
+    stream.on('connect',  function() { pending.splice(0).forEach(send); });
+    stream.setTimeout(60000);   
+ 
+    connections[id] = function(onError) {
+      ++refs;
+      if(onError) stream.on('error', onError);
+
+      return {
+        release: function() {
+          if(onError) stream.removeListener('error', onError);
+
+          if(--refs === 0) {
+            if(stream.readyState === 'writeOnly')
+              stream.end();
+            else
+              setTimeout(60000);
+          }
+        },
+        send: send,
+        local: local
+      }
+    };
+    
+    return connections[id];
   }
   
   var server = net.createServer(function(stream) {
@@ -441,80 +451,117 @@ function makeTcpTransport(options, callback) {
   
   return {
     open: function(remote, error, dontopen) {
-      assert.ok(!error || typeof error === 'function');
+      var id = [remote.address, remote.port].join();
 
-      var cn = connections[[remote.address,remote.port].join()];
-      
-      if(!cn && dontopen) return null;
-      
-      if(error) cn.stream.on('error', error);
+      if(id in connections) return connections[id](error);
 
-      ++cn.refs;
+      if(dontopen) return null;
 
-      return {
-        send: send.bind(null, cn),
-        release: function() {
-          if(error) cn.stream.removeListener('error',error);
-          release(cn);
-        }
-      }
+      return init(net.createConnection(remote.port, remote.address), remote)(error);
     },
-    destroy: function() {
-      server.close();
-    }
+    destroy: function() { server.close(); }
   }
 }
 
 function makeUdpTransport(options, callback) {
-  var socket = udp.createSocket(function(data, rinfo) {
-    try {
-      var m = parseMessage(data);
-      callback(m, {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
-    }
-    catch(e) {
-      debug(e);
-    }
-  });
+  var connections = Object.create(null);
+
+  function listener(data, rinfo) {
+    callback(parseMessage(data), {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
+  };
+
+  var socket = udp.createSocket(listener);
 
   socket.bind(options.port || 5060, options.address);
   
-  function openConnection(remote, error) {
-    var socket = udp.createSocket();
-      
+  function open(remote) {
+    var socket = udp.createSocket(listener),
+        id = [remote.address, remote.port].join(),
+        local,
+        refs = 0,
+        timeout;
+    
+    socket.bind(options.port || 5060, options.address);
     socket.connect(remote.port, remote.address);
-    socket.on('error', error);
+    
+    local = {protocol: 'UDP', address: socket.address().address, port: socket.address().port};
+    
+    socket.on('error', function() {});
+    socket.on('close', function() { delete connections[id]; });
 
-    var local = socket.address();
-    local.protocol = 'UDP';
+    return connections[id] = function(onError) {
+      ++refs;
+      
+      if(timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
 
-    return {
-      send: function(m) { 
-        var s = stringify(m);
-        socket.send(new Buffer(s), 0, s.length());
-      },
-      release: socket.close.bind(socket),
-      local: local 
-    } 
-  }
+      if(onError) socket.on('error', onError);
+
+      return { 
+        send: function(m) {
+          socket.send(new Buffer(m, 'ascii'), 0, m.length);
+        },
+        release: function() { 
+          if(onError) socket.removeListener('error', onError);
+          
+          if(--refs === 0)
+            timeout = setTimeout(socket.close.bind(socket), 30000);
+        },
+        local: local
+      };
+    };
+  };
  
   return {
-    open: openConnection,
-    destroy: function() {
-      socket.close();
-    }
-  }
+    open: function(remote, error) { 
+      return (connections[[remote.address, remote.port].join()] || open(remote))(error);
+    },
+    destroy: function() { socket.close(); }
+  };
 }
 
 function makeTransport(options, callback) {
   var protocols = {};
+
+  var callbackAndLog = callback;
+  if(options.logger && options.logger.recv) {
+    callbackAndLog = function(m, remote) {
+      options.logger.recv(m, remote);
+      callback(m, remote);
+    }
+  }
+  
   if(options.udp === undefined || options.udp)
-    protocols.UDP = makeUdpTransport(options, callback);
+    protocols.UDP = makeUdpTransport(options, callbackAndLog); 
   if(options.tcp === undefined || options.tcp)
-    protocols.TCP = makeTcpTransport(options, callback);
+    protocols.TCP = makeTcpTransport(options, callbackAndLog);
+
+  function wrap(obj, target) {
+    return Object.create(obj, {send: {value: function(m) {
+      if(m.method) {
+        m.headers.via[0].host = this.local.address;
+        m.headers.via[0].port = options.port || 5060;
+        m.headers.via[0].protocol = this.local.protocol;
+      }
+      options.logger && options.logger.send && options.logger.send(m, target);
+      obj.send(stringify(m));
+    }}});
+  }
 
   return {
     open: function(target, error) {
-      return protocols[target.protocol].open(target, error);
+      return wrap(protocols[target.protocol.toUpperCase()].open(target, error), target);
+    },
+    send: function(target, message) {
+      var cn = this.open(target);
+      try {
+        cn.send(message);
+      }
+      finally {
+        cn.release();
+      }
     },
     destroy: function() { 
       Object.keys(protocols).forEach(function(key) { protocols[key].destroy(); });
@@ -609,7 +656,7 @@ function createInviteServerTransaction(transport, cleanup) {
   var confirmed = {enter: function() { setTimeout(sm.enter.bind(sm, terminated), 5000);} };
 
   var succeeded = {
-    enter: function() { sm.timeout(sm.enter.bind(sm, terminated), 32000);},
+    enter: function() { setTimeout(sm.enter.bind(sm, terminated), 32000);},
     send: function(m) { 
       rs = m;
       transport(rs);
@@ -654,12 +701,15 @@ function createInviteClientTransaction(rq, transport, tu, cleanup) {
     enter: function() {
       transport(rq);
 
-      a = setTimeout(function resend(t) {
-        transport(rq);
-        a = setTimeout(resend, t*2, t*2);
-      }, 500, 500);
+      if(!transport.reliable) {
+        a = setTimeout(function resend(t) {
+          transport(rq);
+          a = setTimeout(resend, t*2, t*2);
+        }, 500, 500);
+      }
         
       b = setTimeout(function() {
+        sys.debug('timeout');
         tu(makeResponse(rq, 503));
         sm.enter(terminated);
       }, 32000);
@@ -714,8 +764,8 @@ function createInviteClientTransaction(rq, transport, tu, cleanup) {
 
       setTimeout(sm.enter.bind(sm, terminated), 32000);
     },
-    message: function(message) {
-      transport(ack);
+    message: function(message, remote) {
+      if(remote) transport(ack);  // we don't wan to ack internally generated messages
     }
   };
 
@@ -727,13 +777,16 @@ function createInviteClientTransaction(rq, transport, tu, cleanup) {
 }
 
 function createClientTransaction(rq, transport, tu, cleanup) {  
+  assert.ok(rq.method !== 'INVITE');
+
   var sm = makeSM();
   
   var e, f;
   var trying = {
     enter: function() { 
       transport(rq);
-      e = setTimeout(function() { sm.signal('timerE', 500); }, 500);
+      if(!transport.reliable)
+        e = setTimeout(function() { sm.signal('timerE', 500); }, 500);
       f = setTimeout(function() { sm.signal('timerF'); }, 32000);
     },
     leave: function() {
@@ -752,6 +805,7 @@ function createClientTransaction(rq, transport, tu, cleanup) {
       e = setTimeout(function() { sm.signal('timerE', t*2); }, t*2);
     },
     timerF: function() {
+      sys.debug('timerF' + rq.method);
       tu(makeResponse(rq, 503));
       sm.enter(terminated);
     }
@@ -791,6 +845,8 @@ function makeTransactionLayer(options, transport) {
     createClientTransaction: function(rq, callback) {
       rq.headers.via.unshift({params:{}});
 
+      var transaction = rq.method === 'INVITE' ? createInviteClientTransaction : createClientTransaction;
+
       resolve(parseUri(rq.uri), function(address) {
         var onresponse;
 
@@ -801,9 +857,11 @@ function makeTransactionLayer(options, transport) {
             
             var id = makeTransactionId(rq);
 
-            var cn = transport(address, function() {transactions[id].message(makeResponse(rq, 503));}); 
-            
-            transactions[id] = transaction(rq, cn.send.bind(cn), callback, function() { 
+            var cn = transport(address.shift(), function(e) { sys.debug(e.stack); transactions[id].message(makeResponse(rq, 503));}); 
+            var send = cn.send.bind(cn);
+            send.reliable = cn.local.protocol.toUpperCase() !== 'UDP';            
+
+            transactions[id] = transaction(rq, send, callback, function() { 
               delete transactions[id];
               cn.release();
             });
@@ -862,7 +920,7 @@ exports.create = function(options, callback) {
       else {
         if(m.method) {
           if(m.method === 'ACK') {
-            resolve(parseUri(t.headers.contact[0]), function(address) {
+            resolve(parseUri(m.uri), function(address) {
               if(address.length === 0) return;
             
               var cn = transport.open(address);
