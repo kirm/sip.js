@@ -626,7 +626,7 @@ function createInviteServerTransaction(transport, cleanup) {
       if(message.status >= 300)
         sm.enter(completed);
       else if(message.status >= 200)
-        sm.enter(succeeded);
+        sm.enter(accepted);
       
       transport(rs);
     }
@@ -655,7 +655,7 @@ function createInviteServerTransaction(transport, cleanup) {
   
   var confirmed = {enter: function() { setTimeout(sm.enter.bind(sm, terminated), 5000);} };
 
-  var succeeded = {
+  var accepted = {
     enter: function() { setTimeout(sm.enter.bind(sm, terminated), 32000);},
     send: function(m) { 
       rs = m;
@@ -721,27 +721,23 @@ function createInviteClientTransaction(rq, transport, tu, cleanup) {
     message: function(message) {
       tu(message);
 
-      if(message.status < 200) {
+      if(message.status < 200)
         sm.enter(proceeding);
-      }
-      else if(message.status < 300) {
-         sm.enter(terminated);
-      }
-      else {
+      else if(message.status < 300) 
+         sm.enter(accepted);
+      else
         sm.enter(completed, message);
-      }
     }
   };
 
   var proceeding = {
     message: function(message) {
       tu(message);
-      if(message.status >= 200) {
-        if(message.status < 300)
-          sm.enter(terminated);
-        else
-          sm.enter(completed, message);
-      }
+      
+      if(message.status >= 300)
+        sm.enter(completed, message);
+      else if(message.status >= 200)
+        sm.enter(accepted);
     }
   };
 
@@ -765,7 +761,17 @@ function createInviteClientTransaction(rq, transport, tu, cleanup) {
       setTimeout(sm.enter.bind(sm, terminated), 32000);
     },
     message: function(message, remote) {
-      if(remote) transport(ack);  // we don't wan to ack internally generated messages
+      if(remote) transport(ack);  // we don't want to ack internally generated messages
+    }
+  };
+
+  var accepted = {
+    enter: function() {
+      setTimeout(function() { sm.enter(terminated); }, 32000);
+    },
+    message: function(m) {
+      if(m.status >= 200 && m.status <= 299)
+        tu(message);
     }
   };
 
