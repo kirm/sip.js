@@ -830,8 +830,8 @@ function createClientTransaction(rq, transport, tu, cleanup) {
 
 function makeTransactionId(m) {
   if(m.method === 'ACK')
-    return ['INVITE', m.headers['call-id'], m.headers.via[0].params.branch].join(';');
-  return [m.headers.cseq.method, m.headers['call-id'], m.headers.via[0].params.branch].join(';');
+    return ['INVITE', m.headers['call-id'], m.headers.via[0].params.branch].join();
+  return [m.headers.cseq.method, m.headers['call-id'], m.headers.via[0].params.branch].join();
 }
  
 function makeTransactionLayer(options, transport) {
@@ -945,5 +945,12 @@ exports.create = function(options, callback) {
     },
     destroy: transport.destroy.bind(transport)
   } 
+}
+
+exports.start = function(options, callback) {
+  var r = exports.create(options, callback);
+
+  exports.send = r.send;
+  exports.stop = r.destroy;
 }
 
