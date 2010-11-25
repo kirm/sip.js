@@ -849,7 +849,7 @@ function makeTransactionLayer(options, transport) {
         });
     },
     createClientTransaction: function(rq, callback) {
-      rq.headers.via.unshift({params:{}});
+      if(rq.method !== 'CANCEL') rq.headers.via.unshift({params:{}});
 
       var transaction = rq.method === 'INVITE' ? createInviteClientTransaction : createClientTransaction;
 
@@ -859,7 +859,8 @@ function makeTransactionLayer(options, transport) {
         function next() {
           onresponse = searching;
           if(address.length > 0) {
-            rq.headers.via[0].params.branch = generateBranch();
+            if(rq.method !== 'CANCEL')
+              rq.headers.via[0].params.branch = generateBranch();
             
             var id = makeTransactionId(rq);
 
