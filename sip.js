@@ -1,18 +1,129 @@
-// port of loom's project sip.js to node.js
-
-var sys = require('sys');
+var utils = require('sys');
 var net = require('net');
-var udp = require('./udp.js');
 var dns = require('dns');
 var assert = require('assert');
 
+//Various utility stuff
+
+//node.js 'dgram' module do not allow proper ICMP errors handling
+var udp = (function() {
+  var events = require('events');
+
+  try {
+    var IOWatcher    = process.binding('io_watcher').IOWatcher;
+  } 
+  catch(e) {
+    var IOWatcher    = process.IOWatcher;
+  }
+  var binding      = process.binding('net');
+  var socket       = binding.socket;
+  var recvfrom     = binding.recvfrom;
+  var close        = binding.close;
+
+  var pool = null;
+
+  function getPool() {
+    var minPoolAvail = 1024 * 8;
+
+    var poolSize = 1024 * 64;
+
+    if (pool === null || (pool.used + minPoolAvail  > pool.length)) {
+      pool = new Buffer(poolSize);
+      pool.used = 0;
+    }
+
+    return pool;
+  }
+
+  function Socket(listener) {
+    events.EventEmitter.call(this);
+    var self = this;
+    self.fd = socket('udp4');
+
+    if(typeof listener === 'function')
+      self.on('message', listener);
+
+    self.watcher = new IOWatcher();
+    self.watcher.host = self;
+    self.watcher.callback = function() {
+      try {
+        while(self.fd) {
+          var p = getPool();
+          var rinfo = recvfrom(self.fd, p, p.used, p.length-p.used, 0);
+       
+          if(!rinfo) return;
+
+          self.emit('message', p.slice(p.used, p.used + rinfo.size), rinfo);
+
+          p.used += rinfo.size;
+        }
+      }
+      catch(e) {
+        self.emit('error', e);
+      } 
+    };
+
+    self.watcher.start(); 
+  }
+
+  utils.inherits(Socket, events.EventEmitter); 
+
+  Socket.prototype.bind = function(port, address) {
+    binding.bind(this.fd, port, address);
+    this.emit('listening');
+  }
+
+  Socket.prototype.connect = function(port, address) {
+    binding.connect(this.fd, port, address);
+  }
+
+  Socket.prototype.address = function () {
+    return binding.getsockname(this.fd);
+  };
+
+  Socket.prototype.send = function(buffer, offset, length, callback) {
+    if (typeof offset !== "number" || typeof length !== "number") {
+      throw new Error("send takes offset and length as args 2 and 3");
+    }
+
+    try {
+      var bytes = binding.sendMsg(this.fd, buffer, offset, length);
+    }
+    catch(err) {
+      if (callback) {
+        callback(err);
+      }
+      return;
+    }
+ 
+    if(callback) {
+      callback(null, bytes);
+    }
+  };
+
+  Socket.prototype.close = function () {
+    if (!this.fd) throw new Error('Not running');
+
+    this.watcher.stop();
+
+    close(this.fd);
+    this.fd = null;
+
+    this.emit("close");
+  };
+
+  return { createSocket: function(listener) { return new Socket(listener); } };
+})();
+
 function debug(e) {
   if(e.stack) {
-    sys.debug(e + '\n' + e.stack);
+    utils.debug(e + '\n' + e.stack);
   }
   else
-    sys.debug(sys.inspect(e));
+    utils.debug(utils.inspect(e));
 }
+
+// Actual stack code beging here
 
 function parseResponse(rs, m) {
   var r = rs.match(/^SIP\/(\d+\.\d+)\s+(\d+)\s*(.*)\s*$/);
@@ -371,7 +482,6 @@ function makeStreamParser(onMessage) {
 exports.makeStreamParser = makeStreamParser;
 
 function parseMessage(s) {
-  sys.debug(s);
   var r=/^([\S\s]*?)\r\n\r\n([\S\s]*)/.exec(s.toString('ascii'));
 
   if(r) {
@@ -709,7 +819,6 @@ function createInviteClientTransaction(rq, transport, tu, cleanup) {
       }
         
       b = setTimeout(function() {
-        sys.debug('timeout');
         tu(makeResponse(rq, 503));
         sm.enter(terminated);
       }, 32000);
@@ -811,7 +920,6 @@ function createClientTransaction(rq, transport, tu, cleanup) {
       e = setTimeout(function() { sm.signal('timerE', t*2); }, t*2);
     },
     timerF: function() {
-      sys.debug('timerF' + rq.method);
       tu(makeResponse(rq, 503));
       sm.enter(terminated);
     }
@@ -864,7 +972,7 @@ function makeTransactionLayer(options, transport) {
             
             var id = makeTransactionId(rq);
 
-            var cn = transport(address.shift(), function(e) { sys.debug(e.stack); transactions[id].message(makeResponse(rq, 503));}); 
+            var cn = transport(address.shift(), function(e) { transactions[id].message(makeResponse(rq, 503));}); 
             var send = cn.send.bind(cn);
             send.reliable = cn.local.protocol.toUpperCase() !== 'UDP';            
 
