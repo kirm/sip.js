@@ -145,5 +145,5 @@ parses SIP message.
 
 ### sip.stringify(message)
 
-stringfiies SIP message.
+stringfies SIP message.
 
