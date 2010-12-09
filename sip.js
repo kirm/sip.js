@@ -124,7 +124,7 @@ function debug(e) {
     utils.debug(utils.inspect(e));
 }
 
-// Actual stack code beging here
+// Actual stack code begins here
 
 function parseResponse(rs, m) {
   var r = rs.match(/^SIP\/(\d+\.\d+)\s+(\d+)\s*(.*)\s*$/);
@@ -267,8 +267,7 @@ function parse(data) {
   m.headers = {};
 
   for(var i = 1; i < data.length; ++i) {
-    var r = data[i].match(/^([\w\-.!%*_+`'~]+)\s*:\s*([\s\S]*)$/);
-
+    var r = data[i].match(/^(.*?):\s*([\s\S]*)$/);
     if(!r) {
       return;
     }
@@ -483,17 +482,16 @@ function makeStreamParser(onMessage) {
 exports.makeStreamParser = makeStreamParser;
 
 function parseMessage(s) {
-  var r=/^([\S\s]*?)\r\n\r\n([\S\s]*)/.exec(s.toString('ascii'));
-
+  var r = s.toString('ascii').split('\r\n\r\n');
   if(r) {
-    var m = parse(r[1]);
+    var m = parse(r[0]);
 
     if(m.headers['content-length']) {
-      var c = Math.max(0, Math.min(m.headers['content-length'], r[2].length));
-      m.content = r[2].substring(0, c);
+      var c = Math.max(0, Math.min(m.headers['content-length'], r[1].length));
+      m.content = r[1].substring(0, c);
     }
     else {
-      m.content = r[2];
+      m.content = r[1];
     }
       
     return m;
