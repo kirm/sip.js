@@ -63,6 +63,7 @@ var udp = (function() {
       } 
     };
 
+    self.watcher.set(this.fd, true, false); 
     self.watcher.start(); 
   }
 
