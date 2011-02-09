@@ -1,3 +1,5 @@
+var util = require('sys');
+
 function parseC(c) {
   var t = c.split(/\s+/);
   return { nettype: t[0], addrtype: t[1], address: t[2] };
@@ -91,18 +93,20 @@ var stringifiers = {
 };
 
 function stringifyParam(sdp, type, def) {
-
+  util.debug(util.inspect(arguments));
+  
   if(sdp[type] !== undefined) {
-    var stringifer = function(x) { return type + '=' + stringifiers[type] && stringifiers[type](x) || x + '\r\n'; };
+    var stringifier = function(x) { return type + '=' + ((stringifiers[type] && stringifiers[type](x)) || x) + '\r\n'; };
 
     if(Array.isArray(sdp[type]))
       return sdp[type].map(stringifier).join('');
 
-    return type + '=' + stringifier(sdp[type]) + '\r\n';
+    return stringifier(sdp[type]);
   }
 
-  if(def)
+  if(def !== undefined)
     return type + '=' + def + '\r\n';
+  return '';
 }
 
 exports.stringify = function(sdp) {
