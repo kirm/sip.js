@@ -582,6 +582,7 @@ function makeUdpTransport(options, callback) {
   var socket = udp.createSocket(listener);
 
   socket.bind(options.port || 5060, options.address);
+  socket.on('error', function() {});
   
   function open(remote) {
     var socket = udp.createSocket(listener),
@@ -590,7 +591,7 @@ function makeUdpTransport(options, callback) {
         refs = 0,
         timeout;
     
-    socket.bind(options.port || 5060, options.address);
+    //socket.bind(options.port || 5060, options.address);
     socket.connect(remote.port, remote.address);
     
     local = {protocol: 'UDP', address: socket.address().address, port: socket.address().port};
@@ -776,7 +777,7 @@ function createInviteServerTransaction(transport, cleanup) {
   
   sm.enter(proceeding);
 
-  return {send: sm.signal.bind(sm,'send'), message: sm.signal.bind(sm,'message')};
+  return {send: sm.signal.bind(sm, 'send'), message: sm.signal.bind(sm,'message')};
 }
 
 function createServerTransaction(transport, cleanup) {
@@ -849,23 +850,21 @@ function createInviteClientTransaction(rq, transport, tu, cleanup) {
     }
   };
 
-  var ack;
+  var ack = {
+    method: 'ACK',
+    uri: rq.uri,
+    headers: {
+      from: rq.headers.from,
+      cseq: {method: 'ACK', seq: rq.headers.cseq.seq},
+      'call-id': rq.headers['call-id'],
+      via: [rq.headers.via[0]]
+    }
+  };
+
   var completed = {
     enter: function(rs) {
-      ack = {
-        method: 'ACK',
-        uri: rq.uri,
-        headers: {
-          to: rs.headers.to,
-          from: rq.headers.from,
-          cseq: {method: 'ACK', seq: rq.headers.cseq.seq},
-          'call-id': rq.headers['call-id'],
-          via: [rq.headers.via[0]]
-        }
-      };
-
+      ack.headers.to=rs.headers.to;
       transport(ack);
-
       setTimeout(sm.enter.bind(sm, terminated), 32000);
     },
     message: function(message, remote) {
@@ -1026,28 +1025,25 @@ exports.create = function(options, callback) {
 
   return {
     send: function(m, callback) {
-      var t = transaction.get(m);
-      
-      if(t) {
-        t.send && t.send(m);
+      if(m.method === undefined) {
+        var t = transaction.get(m);
+        t && t.send && t.send(m);
       }
       else {
-        if(m.method) {
-          if(m.method === 'ACK') {
-            resolve(parseUri(m.uri), function(address) {
-              if(address.length === 0) return;
-            
-              var cn = transport.open(address);
-              try {
-                cn.send(m);
-              } finally {
-                cn.release();
-              }
-            });
-          }
-          else {
-            return transaction.openClientTransaction(m, callback || function() {});
-          }
+        if(m.method === 'ACK') {
+          resolve(parseUri(m.uri), function(address) {
+            if(address.length === 0) return;
+          
+            var cn = transport.open(address);
+            try {
+              cn.send(m);
+            } finally {
+              cn.release();
+            }
+          });
+        }
+        else {
+          return transaction.createClientTransaction(m, callback || function() {});
         }
       }
     },
