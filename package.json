@@ -1,14 +1,16 @@
 {
   "name": "sip",
   "description": "Simple SIP implementation",
-  "version": "0.0.2",
+  "version": "0.0.2-1",
   "homepage": "http://github.com/kirm/sip.js",
   "author": "Kirill Mikhailov <kirill.mikhailov@gmail.com>",
   "main": "sip",
   "directories": {
     "lib": ""
   },
-  "modules": { "sdp": "./sdp.js" },
+  "modules": { "sdp": "./sdp.js",
+  "proxy": "./proxy.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/kirm/sip.js.git"
