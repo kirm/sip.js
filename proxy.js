@@ -8,6 +8,16 @@ function onRequest(rq, route) {
   var branch = rq.headers.via[0].params.branch;
   contexts[branch] = ctx;
 
+  function forwardResponse(msg) {
+    if(msg.headers.via[0].params.branch !== branch)
+      msg.headers.via.shift()
+
+    if(msg.status >= 200)
+      delete contexts[branch];
+
+    sip.send(msg);
+  }
+
   route({
     send: function(msg, callback) {
       if(msg.method) {
@@ -39,18 +49,14 @@ function onRequest(rq, route) {
           else
             ctx.cancel = null;
 
-          callback && callback(rs, remote);
+          if(callback) 
+            callback(rs, remote);
+          else 
+            forwardResponse(rs);
         });
       }
       else {
-       if(msg.headers.via[0].params.branch !== branch)
-          msg.headers.via.shift()
-//        assert(msg.headers.via[0].params.branch === branch);
-
-        if(msg.status >= 200)
-          delete contexts[branch];
-
-        sip.send(msg);
+        forwardResponse(msg);
       }
     }
   },
