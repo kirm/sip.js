@@ -163,7 +163,7 @@ function applyRegex(regex, data) {
 function parseParams(data, hdr) {
   hdr.params = hdr.params || {};
 
-  var re = /\s*;\s*([\w\-.!%*_+`'~]+)(?:\s*=\s*([\w\-.!%*_+`'~]+|"[^"\\]*(\\.[^"\\]*)*"))/g; 
+  var re = /\s*;\s*([\w\-.!%*_+`'~]+)(?:\s*=\s*([\w\-.!%*_+`'~]+|"[^"\\]*(\\.[^"\\]*)*"))?/g; 
   
   for(var r = applyRegex(re, data); r; r = applyRegex(re, data)) {
     hdr.params[r[1].toLowerCase()] = r[2];
