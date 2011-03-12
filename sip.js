@@ -208,7 +208,6 @@ function parseAuthHeader(d) {
   var a = {scheme: r1[1]};
 
   var r2 = applyRegex(/([^\s,"=]*)\s*=\s*([^\s,"]+|"[^"\\]*(?:\\.[^"\\]*)*")\s*/g, d);
-  debug(r2);
   a[r2[1]]=r2[2];
 
   while(r2 = applyRegex(/,\s*([^\s,"=]*)\s*=\s*([^\s,"]+|"[^"\\]*(?:\\.[^"\\]*)*")\s*/g, d)) {
@@ -363,6 +362,8 @@ function stringifyAuthHeader(a) {
   return a.scheme + ' ' + s.join(',');
 }
 
+exports.stringifyAuthHeader = stringifyAuthHeader;
+
 var stringifiers = {
   via: function(h) {
     return h.map(function(via) {
@@ -382,10 +383,10 @@ var stringifiers = {
     return 'CSeq: '+cseq.seq+' '+cseq.method+'\r\n';
   },
   'www-authenticate': function(h) { 
-    return h.map(function(x) { 'WWW-Authenticate: '+stringifyAuthHeader(x)+'\r\n'; }).join('');
+    return h.map(function(x) { return 'WWW-Authenticate: '+stringifyAuthHeader(x)+'\r\n'; }).join('');
   },
   'proxy-authenticate': function(h) { 
-    return h.map(function(x) { 'Proxy-Authenticate: '+stringifyAuthHeader(x)+'\r\n'; }).join('');
+    return h.map(function(x) { return 'Proxy-Authenticate: '+stringifyAuthHeader(x)+'\r\n'; }).join('');
   },
   'authorization': function(h) {
     return 'Authorization: ' + stringifyAuthHeader(h) + '\r\n';
