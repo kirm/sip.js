@@ -1029,10 +1029,12 @@ exports.create = function(options, callback) {
       }
       else {
         if(m.method === 'ACK') {
+          m.headers.via.unshift({params: {branch: generateBranch()}});
+          
           resolve(parseUri(m.uri), function(address) {
             if(address.length === 0) return;
           
-            var cn = transport.open(address);
+            var cn = transport.open(address[0]);
             try {
               cn.send(m);
             } finally {
