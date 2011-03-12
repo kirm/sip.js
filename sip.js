@@ -347,7 +347,7 @@ function stringifyParams(params) {
 }
 
 function stringifyAOR(aor) {
-  return (aor.name || '')+' <'+aor.uri+'>'+stringifyParams(aor.params); 
+  return (aor.name || '') + ' <' + stringifyUri(aor.uri) + '>'+stringifyParams(aor.params); 
 }
 
 function stringifyAuthHeader(a) {
@@ -378,6 +378,9 @@ var stringifiers = {
   },
   contact: function(h) { 
     return 'Contact: '+ ((h !== '*' && h.length) ? h.map(stringifyAOR).join(', ') : '*') + '\r\n';
+  },
+  route: function(h) {
+    return h.length ? 'Route: ' + h.map(stringifyAOR).join(', ') + '\r\n' : '';
   },
   cseq: function(cseq) { 
     return 'CSeq: '+cseq.seq+' '+cseq.method+'\r\n';
