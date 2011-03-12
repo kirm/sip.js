@@ -204,21 +204,18 @@ function parseCSeq(d) {
 }
 
 function parseAuthHeader(d) {
-  var s = d.s;
+  var r1 = applyRegex(/([^\s]*)\s+/g, d);
+  var a = {scheme: r1[1]};
 
-  var r = /^([\S]*)\s*([^\s=]*)\s*=\s*([^\s,]|"[^"\\]*(\\.[^"\\]*)*")/.exec(s);
-  var h = {scheme: r[1]};
-  h[r[2]] = r[3];
+  var r2 = applyRegex(/([^\s,"=]*)\s*=\s*([^\s,"]+|"[^"\\]*(?:\\.[^"\\]*)*")\s*/g, d);
+  debug(r2);
+  a[r2[1]]=r2[2];
 
-  var re = /,([\s=]*)\s*=\s*([^\s,]|"[^"\\]*(\\.[^"\\]*)*")/g;
-
-  re.lastIndex = r[0].length;
-
-  while(r = applyRegex(re, d)) {
-    h[r[1]] = r[2];
+  while(r2 = applyRegex(/,\s*([^\s,"=]*)\s*=\s*([^\s,"]+|"[^"\\]*(?:\\.[^"\\]*)*")\s*/g, d)) {
+    a[r2[1]]=r2[2];
   }
 
-  return h;
+  return a;
 }
 
 var compactForm = {
