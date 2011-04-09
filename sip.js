@@ -442,6 +442,34 @@ function makeResponse(rq, status, reason) {
 
 exports.makeResponse = makeResponse;
 
+function clone(o, deep) {
+  if(typeof o === 'object') {
+    var r = Array.isArray(o) ? [] : {};
+    Object.keys(o).forEach(function(k) { r[k] = deep ? clone(o[k], deep): o[k]; });
+    return r;
+  }
+
+  return o;
+}
+
+exports.copyMessage = function(msg, deep) {
+  if(deep) return clone(msg, true);
+
+  var r = {
+    uri: deep ? clone(msg.uri, deep) : msg.uri,
+    method: msg.method,
+    status: msg.status,
+    reason: msg.reason,
+    headers: clone(msg.headers, deep),
+    content: msg.content
+  };
+
+  // always copy via array 
+  r.headers.via = clone(msg.headers.via);
+
+  return r;
+}
+
 function makeStreamParser(onMessage) {
   var m;
   var r = '';

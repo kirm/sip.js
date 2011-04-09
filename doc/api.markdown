@@ -147,3 +147,7 @@ parses SIP message.
 
 stringfies SIP message.
 
+### sip.copyMessage(message[, deep])
+
+copies SIP message. If parameter `deep` is false or omitted it copies only `method`, `uri`, `status`, `reason`, `headers`, `content` fields of root object 
+and `headers.via` array. If deep is true it performs full recursive copy of message object.
