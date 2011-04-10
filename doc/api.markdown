@@ -149,5 +149,54 @@ stringfies SIP message.
 
 ### sip.copyMessage(message[, deep])
 
-copies SIP message. If parameter `deep` is false or omitted it copies only `method`, `uri`, `status`, `reason`, `headers`, `content` fields of root object 
-and `headers.via` array. If deep is true it performs full recursive copy of message object.
+copies SIP message. If parameter `deep` is false or omitted it copies only `method`, `uri`, `status`, `reason`, `headers`, `content` 
+fields of root object and `headers.via` array. If deep is true it performs full recursive copy of message object.
+
+
+## Proxy Module
+
+sip.js includes proxy module to simplify proxy server development. It can be accessed via `require('sip/proxy');`
+Usage example:
+
+    var sip = require('sip');
+    var proxy = require('sip/proxy');
+    var db = require('userdb');
+
+    proxy.start({}, function(rq) {
+      var user = sip.parseUri(rq.uri).user;
+
+      if(user) {
+        rq.uri = db.getContact(user);
+
+        proxy.send(rq);
+      }
+      else
+        proxy.send(sip.makeResponse(rq, 404, 'Not Found')); 
+    });
+
+
+### proxy.start(options, onRequest)
+
+Starts proxy and SIP stack. Parameters are analogous to `sip.start`
+
+### proxy.stop
+
+stops proxy core and sip stack.
+
+### proxy.send(msg[, callback])
+
+Use this function to respond to or to make new requests in context of incoming requests. Proxy core will
+automatically handle cancelling of incoming request and issue `CANCEL` requests for outstanding requests on your
+behalf. Outgoing requests are bound to context through their top via header.
+If you are sending a request and omit `callback` parameter, default calback will be used:
+
+    function defaultProxyCallback(rs) {
+      // stripping top Via
+      rs.headers.via.shift();
+
+      // sending response to original incoming request
+      proxy.send(rs);
+    } 
+
+
+
