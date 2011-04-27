@@ -984,7 +984,12 @@ function makeTransactionLayer(options, transport) {
         });
     },
     createClientTransaction: function(rq, callback) {
-      if(rq.method !== 'CANCEL') rq.headers.via.unshift({params:{}});
+      if(rq.method !== 'CANCEL') {
+        if(rq.headers.via)
+          rq.headers.via.unshift({params:{}});
+        else
+          rq.headers.via = [{params:{}}];
+      }
 
       var transaction = rq.method === 'INVITE' ? createInviteClientTransaction : createClientTransaction;
 
