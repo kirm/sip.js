@@ -93,8 +93,6 @@ var stringifiers = {
 };
 
 function stringifyParam(sdp, type, def) {
-  util.debug(util.inspect(arguments));
-  
   if(sdp[type] !== undefined) {
     var stringifier = function(x) { return type + '=' + ((stringifiers[type] && stringifiers[type](x)) || x) + '\r\n'; };
 
