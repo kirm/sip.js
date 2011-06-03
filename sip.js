@@ -970,16 +970,17 @@ function makeTransactionId(m) {
 }
  
 function makeTransactionLayer(options, transport) {
-  var transactions = Object.create(null);
+  var server_transactions = Object.create(null);
+  var client_transactions = Object.create(null);
 
   return {
     createServerTransaction: function(rq, remote) {
       var id = makeTransactionId(rq);
       var cn = transport(remote, function() {}, true);
-      return transactions[id] = (rq.method === 'INVITE' ? createInviteServerTransaction : createServerTransaction)(
+      return server_transactions[id] = (rq.method === 'INVITE' ? createInviteServerTransaction : createServerTransaction)(
         cn.send.bind(cn),
         function() { 
-          delete transactions[id];
+          delete server_transactions[id];
           cn.release();
         });
     },
@@ -1007,10 +1008,10 @@ function makeTransactionLayer(options, transport) {
 
               var cn = transport(address.shift(), function(e) { transactions[id].message(makeResponse(rq, 503));}); 
               var send = cn.send.bind(cn);
-              send.reliable = cn.local.protocol.toUpperCase() !== 'UDP';            
+              send.reliable = cn.local.protocol.toUpperCase() !== 'UDP';
 
-              transactions[id] = transaction(rq, send, callback, function() { 
-                delete transactions[id];
+              client_transactions[id] = transaction(rq, send, callback, function() { 
+                delete client_transactions[id];
                 cn.release();
               });
             }
@@ -1035,8 +1036,11 @@ function makeTransactionLayer(options, transport) {
       next();
     });
   },
-  get: function(m) {
-    return transactions[makeTransactionId(m)];
+  getServer: function(m) {
+    return server_transactions[makeTransactionId(m)];
+  },
+  getClient: function(m) {
+    return client_transactions[makeTransactionId(m)];
   }};
 }
 
@@ -1044,7 +1048,7 @@ exports.makeTransactionLayer = makeTransactionLayer;
 
 exports.create = function(options, callback) {
   var transport = makeTransport(options, function(m,remote) {
-    var t = transaction.get(m);
+    var t = m.method ? transaction.getServer(m) : transaction.getClient(m);
 
     if(!t) {
       if(m.method && m.method !== 'ACK') {
@@ -1065,7 +1069,7 @@ exports.create = function(options, callback) {
   return {
     send: function(m, callback) {
       if(m.method === undefined) {
-        var t = transaction.get(m);
+        var t = transaction.getServer(m);
         t && t.send && t.send(m);
       }
       else {
