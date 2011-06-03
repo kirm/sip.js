@@ -999,19 +999,24 @@ function makeTransactionLayer(options, transport) {
         function next() {
           onresponse = searching;
           if(address.length > 0) {
-            if(rq.method !== 'CANCEL')
-              rq.headers.via[0].params.branch = generateBranch();
-            
-            var id = makeTransactionId(rq);
+            try {
+              if(rq.method !== 'CANCEL')
+                rq.headers.via[0].params.branch = generateBranch();
+              
+              var id = makeTransactionId(rq);
 
-            var cn = transport(address.shift(), function(e) { transactions[id].message(makeResponse(rq, 503));}); 
-            var send = cn.send.bind(cn);
-            send.reliable = cn.local.protocol.toUpperCase() !== 'UDP';            
+              var cn = transport(address.shift(), function(e) { transactions[id].message(makeResponse(rq, 503));}); 
+              var send = cn.send.bind(cn);
+              send.reliable = cn.local.protocol.toUpperCase() !== 'UDP';            
 
-            transactions[id] = transaction(rq, send, callback, function() { 
-              delete transactions[id];
-              cn.release();
-            });
+              transactions[id] = transaction(rq, send, callback, function() { 
+                delete transactions[id];
+                cn.release();
+              });
+            }
+            catch(e) {
+              callback(makeResponse(rq, 503));  
+            }
           }
           else
             callback(makeResponse(rq, 404));
