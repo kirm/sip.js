@@ -1048,19 +1048,25 @@ exports.makeTransactionLayer = makeTransactionLayer;
 
 exports.create = function(options, callback) {
   var transport = makeTransport(options, function(m,remote) {
-    var t = m.method ? transaction.getServer(m) : transaction.getClient(m);
+    try {
+      var t = m.method ? transaction.getServer(m) : transaction.getClient(m);
 
-    if(!t) {
-      if(m.method && m.method !== 'ACK') {
-        var t = transaction.createServerTransaction(m,remote);
-        callback(m,remote); 
+      if(!t) {
+        if(m.method && m.method !== 'ACK') {
+          var t = transaction.createServerTransaction(m,remote);
+          callback(m,remote); 
+        }
+        else if(m.headers.cseq.method === 'INVITE' || m.method === 'ACK') {
+          callback(m,remote);
+        }
       }
-      else if(m.headers.cseq.method === 'INVITE' || m.method === 'ACK') {
-        callback(m,remote);
+      else {
+        t.message && t.message(m, remote);
       }
-    }
-    else {
-      t.message && t.message(m, remote);
+    } 
+    catch(e) {
+      if(options.logger && options.logger.error)
+        options.logger.error(e); 
     }
   });
   
