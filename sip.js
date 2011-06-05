@@ -1056,7 +1056,7 @@ exports.create = function(options, callback) {
           var t = transaction.createServerTransaction(m,remote);
           callback(m,remote); 
         }
-        else if(m.headers.cseq.method === 'INVITE' || m.method === 'ACK') {
+        else if(m.method === 'ACK') {
           callback(m,remote);
         }
       }
