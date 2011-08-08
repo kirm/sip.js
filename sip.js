@@ -995,6 +995,9 @@ function makeTransactionLayer(options, transport) {
         else
           rq.headers.via = [{params:{}}];
       }
+      
+      if(typeof rq.headers.cseq !== 'object')
+        rq.headers.cseq = parseCSeq({s: rq.headers.cseq, i:0});
 
       var transaction = rq.method === 'INVITE' ? createInviteClientTransaction : createClientTransaction;
 
@@ -1007,7 +1010,7 @@ function makeTransactionLayer(options, transport) {
             try {
               if(rq.method !== 'CANCEL')
                 rq.headers.via[0].params.branch = generateBranch();
-              
+ 
               var id = makeTransactionId(rq);
 
               var cn = transport(address.shift(), function(e) { client_transactions[id].message(makeResponse(rq, 503));}); 
