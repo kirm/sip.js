@@ -976,6 +976,10 @@ function makeTransactionLayer(options, transport) {
   return {
     createServerTransaction: function(rq, remote) {
       var id = makeTransactionId(rq);
+      
+      if(remote.protocol === 'UDP' && !rq.headers.via[0].params.hasOwnProperty('rport'))
+        remote = {protocol: 'UDP', port: rq.headers.via[0].port, address: remote.address};
+
       var cn = transport(remote, function() {}, true);
       return server_transactions[id] = (rq.method === 'INVITE' ? createInviteServerTransaction : createServerTransaction)(
         cn.send.bind(cn),
