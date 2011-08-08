@@ -1006,7 +1006,7 @@ function makeTransactionLayer(options, transport) {
               
               var id = makeTransactionId(rq);
 
-              var cn = transport(address.shift(), function(e) { transactions[id].message(makeResponse(rq, 503));}); 
+              var cn = transport(address.shift(), function(e) { client_transactions[id].message(makeResponse(rq, 503));}); 
               var send = cn.send.bind(cn);
               send.reliable = cn.local.protocol.toUpperCase() !== 'UDP';
 
