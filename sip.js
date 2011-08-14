@@ -550,7 +550,12 @@ function makeTcpTransport(options, callback) {
     }
     
     stream.setEncoding('ascii');
-    stream.on('data',     makeStreamParser(function(m) { callback(m, remote); }));
+
+    stream.on('data', makeStreamParser(function(m) { 
+      if(m.method) m.headers.via[0].params.received = remote.address;
+      callback(m, remote); 
+    }));
+
     stream.on('close',    function() { delete connections[id]; });
     stream.on('error',    function() {});
     stream.on('end',      function() { if(refs === 0) stream.end(); });
@@ -605,6 +610,14 @@ function makeUdpTransport(options, callback) {
   var connections = Object.create(null);
 
   function listener(data, rinfo) {
+    var msg = parseMessage(data);
+
+    if(msg.method) {
+      msg.headers.via[0].params.received = rinfo.address;
+      if(msg.headers.via[0].params.hasOwnProperty('rport'))
+        msg.headers.via[0].params.rport = rinfo.port;
+    }
+    
     callback(parseMessage(data), {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
   };
 
@@ -683,6 +696,14 @@ function makeTransport(options, callback) {
         m.headers.via[0].host = this.local.address;
         m.headers.via[0].port = options.port || 5060;
         m.headers.via[0].protocol = this.local.protocol;
+
+        try {
+        if(this.local.protocol === 'UDP' && (!options.hasOwnProperty('rport') || options.rport)) {
+          m.headers.via[0].params.rport = null;
+        }
+        } catch(e) {
+          utils.debug(e);
+        }
       }
       options.logger && options.logger.send && options.logger.send(m, target);
       obj.send(stringify(m));
