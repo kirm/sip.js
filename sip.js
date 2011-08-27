@@ -245,8 +245,8 @@ var parsers = {
   'via': parseMultiHeader.bind(0, parseVia),
   'www-authenticate': parseMultiHeader.bind(0, parseAuthHeader),
   'proxy-authenticate': parseMultiHeader.bind(0, parseAuthHeader),
-  'authorization': parseMultiHeader.bind(0, parseAuthHeader),
-  'proxy-authorizarion': parseMultiHeader.bind(0, parseAuthHeader)
+  'authorization': parseAuthHeader,
+  'proxy-authorizarion': parseAuthHeader
 };
 
 function parse(data) {
@@ -354,7 +354,7 @@ function stringifyAuthHeader(a) {
   var s = [];
 
   for(var n in a) {
-    if(n !== 'scheme') {
+    if(n !== 'scheme' && a[n] !== undefined) {
       s.push(n + '=' + a[n]);
     }
   }
@@ -396,6 +396,9 @@ var stringifiers = {
   },
   'proxy-authorization': function(h) {
     return 'Proxy-Authorization: ' + stringifyAuthHeader(h) + '\r\n';
+  },
+  'authentication-info': function(h) {
+    return 'Authentication-Info: ' + stringifyAuthHeader(h) + '\r\n';
   }
 };
 
