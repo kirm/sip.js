@@ -245,8 +245,9 @@ var parsers = {
   'via': parseMultiHeader.bind(0, parseVia),
   'www-authenticate': parseMultiHeader.bind(0, parseAuthHeader),
   'proxy-authenticate': parseMultiHeader.bind(0, parseAuthHeader),
-  'authorization': parseAuthHeader,
-  'proxy-authorizarion': parseAuthHeader
+  'authorization': parseMultiHeader.bind(0, parseAuthHeader),
+  'proxy-authorizarion': parseMultiHeader.bind(0, parseAuthHeader),
+  'www-authenticate': parseAuthHeader
 };
 
 function parse(data) {
@@ -359,7 +360,7 @@ function stringifyAuthHeader(a) {
     }
   }
 
-  return a.scheme + ' ' + s.join(',');
+  return a.scheme ? a.scheme + ' ' + s.join(',') : s.join(',');
 }
 
 exports.stringifyAuthHeader = stringifyAuthHeader;
@@ -392,10 +393,10 @@ var stringifiers = {
     return h.map(function(x) { return 'Proxy-Authenticate: '+stringifyAuthHeader(x)+'\r\n'; }).join('');
   },
   'authorization': function(h) {
-    return 'Authorization: ' + stringifyAuthHeader(h) + '\r\n';
+    return h.map(function(x) { return 'Authorization: ' + stringifyAuthHeader(x) + '\r\n'}).join('');
   },
   'proxy-authorization': function(h) {
-    return 'Proxy-Authorization: ' + stringifyAuthHeader(h) + '\r\n';
+    return h.map(function(x) { return 'Proxy-Authorization: ' + stringifyAuthHeader(x) + '\r\n'}).join('');; 
   },
   'authentication-info': function(h) {
     return 'Authentication-Info: ' + stringifyAuthHeader(h) + '\r\n';
