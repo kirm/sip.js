@@ -13,8 +13,8 @@ dialogs = {}
 makeDialogId = (rq, tag) ->
   [rq.headers['call-id'], rq.headers.from.params.tag, rq.headers.to.params.tag || tag].join()
 
-context = undefined
-regcontext = undefined
+context = {realm: 'test', qop: 'auth-int'} 
+regcontext = {realm: 'test'}
 
 sip.start {
     logger:
@@ -28,62 +28,49 @@ sip.start {
       else
         switch rq.method
           when 'REGISTER'
-            if !rq.headers.authorization || !digest.server.authenticate regcontext, rq, rq.headers.authorization
-              regcontext = {nonce: (rbytes 16), qop: ['auth', 'auth-int'], algorithm:'MD5', user: '100', passwd: '1234', realm: '172.16.2.12'}
-              rs = sip.makeResponse rq, 407, 'Authorization Required'
-              rs.headers['www-authenticate'] = [digest.server.makeAuthenticateHeader regcontext]
-              sip.send rs
+            if !digest.authenticateRequest regcontext, rq, {user: '100', password: '1234'} 
+              sip.send digest.challenge regcontext, sip.makeResponse rq, 401, 'Authorization Required'
             else
               rs = sip.makeResponse rq, 200
               rs.headers.to.tag = rbytes 16
-              sip.send rs
+              sip.send digest.signResponse regcontext, rs
           when 'INVITE'
-            if !rq.headers.authorization
-              context = {nonce: (rbytes 16), qop: 'auth-int', algorithm:'MD5', user: '100', passwd: '1234', realm: 'sip'}
-              rs = sip.makeResponse rq, 407, 'Authorization Required'
-              rs.headers['www-authenticate'] = [digest.server.makeAuthenticateHeader context]
-              sip.send rs
+            if !digest.authenticateRequest context, rq, {user: '100', password: '1234'}
+              sip.send digest.challenge context, sip.makeResponse rq, 401, 'Authorization Required'
             else
-              if digest.server.authenticate context, rq, rq.headers.authorization
-                tag = rbytes 16
-                dialogs[makeDialogId rq, tag] = (rq) ->
-                  try
-                    if !rq.headers.authorization || !digest.server.authenticate context, rq, rq.headers.authorization
-                      rs = sip.makeResponse rq, 407, 'Authorization Required'
-                      rs.headers['www-authenticate'] = [digest.server.makeAuthenticateHeader context]
-                      sip.send rs
-                    else
-                      switch rq.method
-                        when 'BYE'
-                          sip.send sip.makeResponse rq, 200
-                          delete dialogs[makeDialogId rq, tag]
-                        else
-                          sip.send sip.makeResponse rq, 400
-                  catch e
-                    util.debug e
-                rs = sip.makeResponse rq, 200, 'OK'
-                rs.content = 
-                  '''
-                  v=0
-                  o=sip 28908764872 28908764872 IN IP4 127.0.0.1
-                  s=-
-                  c=IN IP4 127.0.0.1
-                  t=0 0
-                  m=audio 0 RTP/AVP 0 8
-                  a=rtpmap:0 PCMU/8000
-                  a=rtpmap:8 PCMA/8000
-                  a=sendonly
+              tag = rbytes 16
+              dialogs[makeDialogId rq, tag] = (rq) ->
+                try
+                  if digest.authenticateRequest context, rq
+                    sip.send digest.challenge context, sip.makeResponse rq, 401, 'Authorization Required'
+                  else
+                    switch rq.method
+                      when 'BYE'
+                        sip.send digest.signResponse context, sip.makeResponse rq, 200
+                        delete dialogs[makeDialogId rq, tag]
+                      else
+                        sip.send digest.signResponse context, sip.makeResponse rq, 400
+                catch e
+                  util.debug e
+              
+              rs = sip.makeResponse rq, 200, 'OK'
+              rs.content = 
+                '''
+                v=0
+                o=sip 28908764872 28908764872 IN IP4 127.0.0.1
+                s=-
+                c=IN IP4 127.0.0.1
+                t=0 0
+                m=audio 0 RTP/AVP 0 8
+                a=rtpmap:0 PCMU/8000
+                a=rtpmap:8 PCMA/8000
+                a=sendonly
 
-                  '''
-                rs.headers['content-length'] = rs.content.length
-                rs.headers.to.params.tag = tag
-                rs.headers['authentication-info'] = digest.server.makeAuthenticationInfoHeader context, true
-                sip.send rs
-              else
-                context.nonce = rbytes 16
-                rs = sip.makeResponse rq, 407, 'Authorization Required'
-                rs.headers['www-authenticate'] = [digest.server.makeAuthenticateHeader context]
-                sip.send rs
+                '''
+              rs.headers['content-length'] = rs.content.length
+              rs.headers.to.params.tag = tag
+              
+              sip.send digest.signResponse context, rs
           else
             sip.send sip.makeResponse rq, 400
     catch e
