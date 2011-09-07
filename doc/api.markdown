@@ -7,7 +7,8 @@ It features:
 
 * SIP Message Parser
 * UDP and TCP based transport
-* Transaction
+* Transactions
+* Digest Authentication
 
 Example
 --------------------
@@ -152,6 +153,77 @@ stringfies SIP message.
 copies SIP message. If parameter `deep` is false or omitted it copies only `method`, `uri`, `status`, `reason`, `headers`, `content` 
 fields of root object and `headers.via` array. If deep is true it performs full recursive copy of message object.
 
+## Digest Authentication
+
+sip.js implements digest authentication as described in RFC 2617. Module can be accessed by calling `require('sip/digest');`
+
+### Server-side API
+
+#### digest.challenge(session, response)
+
+inserts digest challenge ('WWW-Authethicate' or 'Proxy-Authenticate' headers) into response and returns it. `session` parameter
+is a javascript object containing at least `realm` property. On return it will contain session parameters (nonce, nonce-count etc)
+and should be passed to subsequent `authenticateRequest` calls. It is a plain object containing only numbers and strings and can be
+'jsoned' and saved to database if required.
+
+#### digest.authenticateRequest(session, request[, credentials])
+
+returns `true` if request is signed using supplied challenge and credentials. `credentials` required only on first call to generate `ha1` value 
+which is cached in `session` object. `credentials` is an object containing following properties:
+
+* `user` - user's account name
+* `realm` - protection realm name. optinal, should match realm passed in corresponding `challenge` call.
+* `password` - user's password. optional if `hash` property is present.
+* `hash` - hash of user's name, password and protection realm. Optional if `password` is present. Can be obtained by calling 
+  `digest.calculateUserRealmPasswordHash` and used if you don't want to store passwords as clear text.
+
+#### digest.signResponse(session, response)
+
+inserts 'Authentication-Info' header into response. Used for mutual client-server authentication.
+
+### Client-side API
+
+### digest.signRequest(session, request[, response, credentials])
+
+inserts 'Authorization' or 'Proxy-Authorization' headers into request and returns it. To initialize the session after server challenge reception,
+supply `response` (must be 401 or 407 response containing server challenge) and `credentials`. `credentials` parameter described in 
+`digest.authenticateRequest` description.
+
+### digest.authenticateResponse(session, response)
+
+checks server signature in 'Authentication-Info' parameter. Returns `true` if signature is valid, `false` if invalid and `undefined` if no 'Authentication-Info'
+header present or it lacks `rspauth` parameter. If server supplied `nextnonce` parameter reinitializes `session`. 
+
+### Low level functions
+
+#### digest.calculateDigest(arguments)
+
+calculates digest as described in RFC 2617. `arguments` is an object with following properties
+
+* `ha1`
+* `nonce`
+* `nc`
+* `cnonce`
+* `qop`
+* `method`
+* `uri`
+* `entity`
+
+#### digest.calculateHA1(arguments)
+
+calculates H(A1) value as described if RFC 2617. `arguments` is an object with followin properties
+
+* `userhash` - hash of user's name, realm and password. Optional if `user`, `realm` and `password` properties are present
+* `user` - user's name. Optional if `userhash` is present.
+* `realm` - realm name. Optional if `userhash` is present.
+* `password` - user's password in realm. Optional if `userhash` is present.
+* `algorithm` - authentication algorithm. Optional, by default used value `md5`.
+* `nonce` - server's nonce parameter. Optional if `algorithm` is _not_ equal to `md5-sess`
+* `cnonce` - client's nonce. Optional if `algorithm` is _not_ equal to `md5-sess`
+
+#### digest.calculateUserRealmPasswordHash(user, realm, password)
+
+calculates hash of 'user:realm:password'
 
 ## Proxy Module
 
