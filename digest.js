@@ -204,8 +204,11 @@ exports.signRequest = function (ctx, rq, rs, creds) {
   };
 
   var hname = ctx.proxy ? 'proxy-authorization' : 'authorization'; 
-  
-  (rq.headers[hname] = rq.headers[hname] || []).push(signature);
+ 
+  rq.headers[hname] = (rq.headers[hname] || []).filter(function(x) { return unq(x.realm) !== ctx.realm; });
+  rq.headers[hname].push(signature);
+
+  return rq;
 }
 
 exports.authenticateResponse = function(ctx, rs) {
