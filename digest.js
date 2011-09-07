@@ -39,15 +39,23 @@ function calculateUserRealmPasswordHash(user, realm, password) {
 }
 exports.calculateUserRealmPasswordHash = calculateUserRealmPasswordHash;
 
-function calculateDigest(ha1, method, nonce, nc, cnonce, qop, uri, entity) {
-  switch(qop) {
+function calculateHA1(ctx) {
+  var userhash = ctx.userhash || calculateUserRealmPasswordHash(ctx.user, ctx.realm, ctx.password);
+  if(ctx.algorithm === 'md5-sess') return kd(userhash, ctx.nonce, ctx.cnonce);
+
+  return userhash; 
+}
+exports.calculateHA1 = calculateHA1;
+
+function calculateDigest(ctx) {
+  switch(ctx.qop) {
   case 'auth-int':
-    return kd(ha1, nonce, nc, cnonce, qop, kd(method, uri + kd(entity)));
+    return kd(ctx.ha1, ctx.nonce, ctx.nc, ctx.cnonce, ctx.qop, kd(ctx.method, ctx.uri, kd(ctx.entity)));
   case 'auth':
-    return kd(ha1, nonce, nc, cnonce, qop, kd(method, uri));
+    return kd(ctx.ha1, ctx.nonce, ctx.nc, ctx.cnonce, ctx.qop, kd(ctx.method, ctx.uri));
   }
 
-  return kd(ha1, nonce, kd(method, uri));
+  return kd(ctx.ha1, ctx.nonce, kd(ctx.method, ctx.uri));
 }
 exports.calculateDigest = calculateDigest;
 
@@ -122,8 +130,7 @@ exports.authenticateRequest = function(ctx, rq, creds) {
       ctx.ha1 = kd(ctx.userhash, ctx.nonce, cnonce);
   }
   
-  var digest = calculateDigest(ctx.ha1, rq.method, ctx.nonce, numberTo8Hex(ctx.nc), cnonce, qop, uri, rq.entity);
-
+  var digest = calculateDigest({ha1:ctx.ha1, method:rq.method, nonce:ctx.nonce, nc:numberTo8Hex(ctx.nc), cnonce:cnonce, qop:qop, uri:uri, entity:rq.content});
   if(digest === unq(response.response)) {
     ctx.cnonce = cnonce;
     ctx.uri = uri;
@@ -141,7 +148,7 @@ exports.signResponse = function(ctx, rs) {
     qop: q(ctx.qop),
     cnonce: q(ctx.cnonce),
     nc: nc,
-    rspauth: q(calculateDigest(ctx.ha1, '', ctx.nonce, nc, ctx.cnonce, ctx.qop, ctx.uri, rs.entity))
+    rspauth: q(calculateDigest({ha1:ctx.ha1, method:'', nonce:ctx.nonce, nc:nc, cnonce:ctx.cnonce, qop:ctx.qop, uri:ctx.uri, entity:rs.content}))
   };
   return rs;
 }
@@ -200,7 +207,7 @@ exports.signRequest = function (ctx, rq, rs, creds) {
     cnonce: q(ctx.cnonce),
     qop: q(ctx.qop),
     opaque: q(ctx.opaque),
-    response: q(calculateDigest(ctx.ha1, rq.method, ctx.nonce, nc, ctx.cnonce, ctx.qop, ctx.uri, rq.content))    
+    response: q(calculateDigest({ha1:ctx.ha1, method:rq.method, nonce:ctx.nonce, nc:nc, cnonce:ctx.cnonce, qop:ctx.qop, uri:ctx.uri, entity:rq.content}))    
   };
 
   var hname = ctx.proxy ? 'proxy-authorization' : 'authorization'; 
@@ -216,7 +223,8 @@ exports.authenticateResponse = function(ctx, rs) {
 
   if(!signature) return undefined;
 
-  if(calculateDigest(ctx.ha1, '', ctx.nonce, numberTo8Hex(ctx.nc), ctx.cnonce, ctx.qop, ctx.uri, rs.content) === unq(signature.rspauth)) {
+  var digest=calculateDigest({ha1:ctx.ha1, method:'', nonce:ctx.nonce, nc:numberTo8Hex(ctx.nc), cnonce:ctx.cnonce, qop:ctx.qop, uri:ctx.uri, enity:rs.content});
+  if(digest === unq(signature.rspauth)) {
     var nextnonce = unq(signature.nextnonce);
     if(nextnonce && nextnonce !== ctx.nonce) {
       ctx.nonce = nextnonce;
