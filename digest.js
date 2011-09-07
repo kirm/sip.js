@@ -216,7 +216,7 @@ exports.authenticateResponse = function(ctx, rs) {
 
   if(!signature) return undefined;
 
-  if(calculateResponse(ctx.ha1, '', ctx.nonce, numberTo8Hex(ctx.nc), ctx.cnonce, ctx.qop, ctx.uri, rs.content) === unq(signature.rspauth)) {
+  if(calculateDigest(ctx.ha1, '', ctx.nonce, numberTo8Hex(ctx.nc), ctx.cnonce, ctx.qop, ctx.uri, rs.content) === unq(signature.rspauth)) {
     var nextnonce = unq(signature.nextnonce);
     if(nextnonce && nextnonce !== ctx.nonce) {
       ctx.nonce = nextnonce;
