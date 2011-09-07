@@ -23,7 +23,6 @@ function kd() {
   var hash = crypto.createHash('md5');
 
   var a = Array.prototype.join.call(arguments, ':');
-  util.debug(a);
   hash.update(a);
 
   return hash.digest('hex');
