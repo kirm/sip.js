@@ -637,7 +637,7 @@ function makeUdpTransport(options, callback) {
         refs = 0,
         timeout;
     
-    //socket.bind(options.port || 5060, options.address);
+    socket.bind(options.port || 5060, options.address);
     socket.connect(remote.port, remote.address);
     
     local = {protocol: 'UDP', address: socket.address().address, port: socket.address().port};
