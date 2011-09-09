@@ -58,6 +58,24 @@ function calculateDigest(ctx) {
 }
 exports.calculateDigest = calculateDigest;
 
+var nonceSalt = rbytes();
+function generateNonce(tag, timestamp) {
+  var ts = (timestamp || new Date()).toISOString();
+  return new Buffer([ts, kd(ts, tag, nonceSalt)].join(';'), 'ascii').toString('base64');
+}
+exports.generateNonce = generateNonce;
+
+function extractNonceTimestamp(nonce, tag) {
+  var v = new Buffer(nonce, 'base64').toString('ascii').split(';');
+  if(v.length != 2)
+    return;
+
+  var ts = new Date(v[0]);
+
+  return generateNonce(tag, ts) === nonce && ts;
+}
+exports.extractNonceTimestamp = extractNonceTimestamp;
+
 function numberTo8Hex(n) {
   n = n.toString(16);
   return '00000000'.substr(n.length) + n;
@@ -90,7 +108,7 @@ function selectQop(challenge, preference) {
 exports.challenge = function(ctx, rs) {
   ctx.proxy = rs.status === 407;
 
-  ctx.nonce = rbytes();
+  ctx.nonce = ctx.cnonce || rbytes();
   ctx.nc = 0;
   ctx.qop = ctx.qop || 'auth,auth-int';
   ctx.algorithm = ctx.algorithm || 'md5';
