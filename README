@@ -6,11 +6,9 @@ sip.js is a SIP stack for node.js. It implements tranaction and transport layers
 INSTALL
 -------
 
-Copy sip.js file into a directory in node.js library path (typically /usr/local/lib/node). You can run
-following script to print out directories in the path.
-
-    var util = require('sys');
-    util.print(util.inspect(require.paths));
+Easiest way is npm.
+  
+  npm install sip
 
 
 API
