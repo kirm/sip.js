@@ -18,7 +18,7 @@ exports.send = function(msg, callback) {
   var ctx = contexts[makeContextId(msg)];
 
   if(!ctx) {
-    sip.send.apply(arguments);
+    sip.send.apply(sip, arguments);
     return;
   }
  
@@ -69,8 +69,15 @@ function forwardRequest(ctx, rq, callback) {
 
 
 function onRequest(rq, route, remote) {
-  contexts[makeContextId(rq)] = { cancellers: {} };
-  route(sip.copyMessage(rq), remote);
+  var id = makeContextId(rq);
+  contexts[id] = { cancellers: {} };
+
+  try {
+    route(sip.copyMessage(rq), remote);
+  } catch(e) {
+    delete contexts[id];
+    throw e;
+  }
 };
 
 
