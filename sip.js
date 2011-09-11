@@ -1086,7 +1086,12 @@ exports.create = function(options, callback) {
       if(!t) {
         if(m.method && m.method !== 'ACK') {
           var t = transaction.createServerTransaction(m,remote);
-          callback(m,remote); 
+          try {
+            callback(m,remote);
+          } catch(e) {
+            t.send(makeResponse(m, '500', 'Internal Server Error'));
+            throw e;
+          } 
         }
         else if(m.method === 'ACK') {
           callback(m,remote);
