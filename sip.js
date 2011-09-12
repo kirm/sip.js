@@ -247,7 +247,7 @@ var parsers = {
   'proxy-authenticate': parseMultiHeader.bind(0, parseAuthHeader),
   'authorization': parseMultiHeader.bind(0, parseAuthHeader),
   'proxy-authorizarion': parseMultiHeader.bind(0, parseAuthHeader),
-  'www-authenticate': parseAuthHeader
+  'authentication-info': parseAuthHeader
 };
 
 function parse(data) {
