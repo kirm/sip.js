@@ -248,7 +248,7 @@ var parsers = {
     if(v == '*')
       return v;
     else
-      return parseMultiHeader(parseAOR, v);
+      return parseMultiHeader(parseAOR, v, h);
   },
   'route': parseMultiHeader.bind(0, parseAOR),
   'cseq': parseCSeq,
