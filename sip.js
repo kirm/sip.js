@@ -142,7 +142,7 @@ function parseRequest(rq, m) {
   var r = rq.match(/^([\w\-.!%*_+`'~]+)\s([^\s]+)\sSIP\s*\/\s*(\d+\.\d+)/);
 
   if(r) {
-    m.method = r[1];
+    m.method = unescape(r[1]);
     m.uri = r[2];
     m.version = r[3];
 
@@ -200,7 +200,7 @@ function parseVia(data) {
 
 function parseCSeq(d) {
   var r = /(\d+)\s*([\S]+)/.exec(d.s);
-  return { seq: +r[1], method: r[2] };
+  return { seq: +r[1], method: unescape(r[2]) };
 }
 
 function parseAuthHeader(d) {
@@ -281,7 +281,7 @@ function parse(data) {
       return;
     }
 
-    var name = r[1].toLowerCase();
+    var name = unescape(r[1]).toLowerCase();
     name = compactForm[name] || name;
 
     m.headers[name] = (parsers[name] || parseGenericHeader)({s:r[2], i:0}, m.headers[name]);
