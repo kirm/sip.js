@@ -276,7 +276,7 @@ function parse(data) {
   m.headers = {};
 
   for(var i = 1; i < data.length; ++i) {
-    var r = data[i].match(/^(.*?):\s*([\s\S]*)$/);
+    var r = data[i].match(/^([\S]*?)\s*:\s*([\s\S]*)$/);
     if(!r) {
       return;
     }
