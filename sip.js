@@ -195,7 +195,7 @@ function parseAOR(data) {
 
 function parseVia(data) {
   var r = applyRegex(/SIP\s*\/\s*(\d+\.\d+)\s*\/\s*([\S]+)\s+([^\s;:]+)(?:\s*:\s*(\d+))?/g, data);
-  return parseParams(data, {version: r[1], protocol: r[2], host: r[3], port: +r[4]});
+  return parseParams(data, {version: r[1], protocol: r[2], host: r[3], port: r[4] && +r[4]});
 }
 
 function parseCSeq(d) {
@@ -214,6 +214,17 @@ function parseAuthHeader(d) {
     a[r2[1]]=r2[2];
   }
 
+  return a;
+}
+
+function parseAuthenticationInfoHeader(d) {
+  var a = {};
+  var r = applyRegex(/([^\s,"=]*)\s*=\s*([^\s,"]+|"[^"\\]*(?:\\.[^"\\]*)*")\s*/g, d);
+  a[r[1]]=r[2];
+
+  while(r = applyRegex(/,\s*([^\s,"=]*)\s*=\s*([^\s,"]+|"[^"\\]*(?:\\.[^"\\]*)*")\s*/g, d)) {
+    a[r[1]]=r[2];
+  }
   return a;
 }
 
@@ -246,8 +257,8 @@ var parsers = {
   'www-authenticate': parseMultiHeader.bind(0, parseAuthHeader),
   'proxy-authenticate': parseMultiHeader.bind(0, parseAuthHeader),
   'authorization': parseMultiHeader.bind(0, parseAuthHeader),
-  'proxy-authorizarion': parseMultiHeader.bind(0, parseAuthHeader),
-  'authentication-info': parseAuthHeader
+  'proxy-authorization': parseMultiHeader.bind(0, parseAuthHeader),
+  'authentication-info': parseAuthenticationInfoHeader
 };
 
 function parse(data) {
