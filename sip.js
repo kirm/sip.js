@@ -258,7 +258,8 @@ var parsers = {
   'proxy-authenticate': parseMultiHeader.bind(0, parseAuthHeader),
   'authorization': parseMultiHeader.bind(0, parseAuthHeader),
   'proxy-authorization': parseMultiHeader.bind(0, parseAuthHeader),
-  'authentication-info': parseAuthenticationInfoHeader
+  'authentication-info': parseAuthenticationInfoHeader,
+  'refer-to': parseAOR
 };
 
 function parse(data) {
@@ -411,7 +412,8 @@ var stringifiers = {
   },
   'authentication-info': function(h) {
     return 'Authentication-Info: ' + stringifyAuthHeader(h) + '\r\n';
-  }
+  },
+  'refer-to': function(h) { return 'Refer-To: ' + stringifyAOR(h) + '\r\n'; }
 };
 
 function stringify(m) {
