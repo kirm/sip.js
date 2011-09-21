@@ -1,0 +1,51 @@
+{
+  "method": "REGISTER",
+  "uri": "sip:registrar.example.com",
+  "version": "2.0",
+  "headers": {
+    "to": {
+      "name": "\"%Z%45\"",
+      "uri": "sip:resource@example.com",
+      "params": {}
+    },
+    "from": {
+      "name": "\"%Z%45\"",
+      "uri": "sip:resource@example.com",
+      "params": {
+        "tag": "f232jadfj23"
+      }
+    },
+    "call-id": "esc02.asdfnqwo34rq23i34jrjasdcnl23nrlknsdf",
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "host.example.com",
+        "params": {
+          "branch": "z9hG4bK209%fzsnel234"
+        }
+      }
+    ],
+    "cseq": {
+      "seq": 29344,
+      "method": "REGISTER"
+    },
+    "max-forwards": "70",
+    "contact": [
+      {
+        "uri": "sip:alias1@host1.example.com",
+        "params": {}
+      },
+      {
+        "uri": "sip:alias2@host2.example.com",
+        "params": {}
+      },
+      {
+        "uri": "sip:alias3@host3.example.com",
+        "params": {}
+      }
+    ],
+    "content-length": 0
+  },
+  "content": ""
+}

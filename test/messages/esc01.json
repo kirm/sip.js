@@ -1,0 +1,42 @@
+{
+  "method": "INVITE",
+  "uri": "sip:sips%3Auser%40example.com@example.net",
+  "version": "2.0",
+  "headers": {
+    "to": {
+      "uri": "sip:%75se%72@example.com",
+      "params": {}
+    },
+    "from": {
+      "uri": "sip:I%20have%20spaces@example.net",
+      "params": {
+        "tag": "938"
+      }
+    },
+    "max-forwards": "87",
+    "call-id": "esc01.239409asdfakjkn23onasd0-3234",
+    "cseq": {
+      "seq": 234234,
+      "method": "INVITE"
+    },
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "host5.example.net",
+        "params": {
+          "branch": "z9hG4bKkdjuw"
+        }
+      }
+    ],
+    "content-type": "application/sdp",
+    "contact": [
+      {
+        "uri": "sip:cal%6Cer@host5.example.net;%6C%72;n%61me=v%61lue%25%34%31",
+        "params": {}
+      }
+    ],
+    "content-length": 150
+  },
+  "content": "v=0\r\no=mhandley 29739 7272939 IN IP4 192.0.2.1\r\ns=-\r\nc=IN IP4 192.0.2.1\r\nt=0 0\r\nm=audio 49217 RTP/AVP 0 12\r\nm=video 3227 RTP/AVP 31\r\na=rtpmap:31 LPC\r\n"
+}

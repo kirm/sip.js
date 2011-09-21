@@ -1,0 +1,74 @@
+{
+  "method": "INVITE",
+  "uri": "sip:vivekg@chair-dnrc.example.com;unknownparam",
+  "version": "2.0",
+  "headers": {
+    "to": {
+      "uri": "sip:vivekg@chair-dnrc.example.com",
+      "params": {
+        "tag": "1918181833n"
+      }
+    },
+    "from": {
+      "name": "\"J Rosenberg \\\\\\\"\"",
+      "uri": "sip:jdrosen@example.com",
+      "params": {
+        "tag": "98asjd8"
+      }
+    },
+    "max-forwards": "0068",
+    "call-id": "wsinv.ndaksdj@192.0.2.1",
+    "content-length": 150,
+    "cseq": {
+      "seq": 9,
+      "method": "INVITE"
+    },
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "192.0.2.2",
+        "params": {
+          "branch": "390skdjuw"
+        }
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "spindle.example.com",
+        "params": {
+          "branch": "z9hG4bK9ikj8"
+        }
+      },
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "192.168.255.111",
+        "params": {
+          "branch": "z9hG4bK30239"
+        }
+      }
+    ],
+    "subject": "",
+    "newfangledheader": "newfangled value\r\n continued newfangled value",
+    "unknownheaderwithunusualvalue": ";;,,;;,;",
+    "content-type": "application/sdp",
+    "route": [
+      {
+        "uri": "sip:services.example.com;lr;unknownwith=value;unknown-no-value",
+        "params": {}
+      }
+    ],
+    "contact": [
+      {
+        "name": "\"Quoted string \\\"\\\"\"",
+        "uri": "sip:jdrosen@example.com",
+        "params": {
+          "newparam": "newvalue",
+          "q": "0.33"
+        }
+      }
+    ]
+  },
+  "content": "v=0\r\no=mhandley 29739 7272939 IN IP4 192.0.2.3\r\ns=-\r\nc=IN IP4 192.0.2.4\r\nt=0 0\r\nm=audio 49217 RTP/AVP 0 12\r\nm=video 3227 RTP/AVP 31\r\na=rtpmap:31 LPC\r\n"
+}

@@ -1,0 +1,68 @@
+{
+  "method": "OPTIONS",
+  "uri": "sip:user@example.com",
+  "version": "2.0",
+  "headers": {
+    "to": {
+      "uri": "sip:user@example.com",
+      "params": {}
+    },
+    "from": {
+      "uri": "sip:caller@example.com",
+      "params": {
+        "tag": "323"
+      }
+    },
+    "max-forwards": "70",
+    "call-id": "transports.kijh4akdnaqjkwendsasfdj",
+    "accept": "application/sdp",
+    "cseq": {
+      "seq": 60,
+      "method": "OPTIONS"
+    },
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "t1.example.com",
+        "params": {
+          "branch": "z9hG4bKkdjuw"
+        }
+      },
+      {
+        "version": "2.0",
+        "protocol": "SCTP",
+        "host": "t2.example.com",
+        "params": {
+          "branch": "z9hG4bKklasjdhf"
+        }
+      },
+      {
+        "version": "2.0",
+        "protocol": "TLS",
+        "host": "t3.example.com",
+        "params": {
+          "branch": "z9hG4bK2980unddj"
+        }
+      },
+      {
+        "version": "2.0",
+        "protocol": "UNKNOWN",
+        "host": "t4.example.com",
+        "params": {
+          "branch": "z9hG4bKasd0f3en"
+        }
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "t5.example.com",
+        "params": {
+          "branch": "z9hG4bK0a9idfnee"
+        }
+      }
+    ],
+    "content-length": 0
+  },
+  "content": ""
+}

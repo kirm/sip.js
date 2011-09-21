@@ -1,0 +1,244 @@
+{
+  "method": "INVITE",
+  "uri": "sip:user@example.com",
+  "version": "2.0",
+  "headers": {
+    "to": {
+      "name": "\"I have a user name of extremeextremeextremeextremeextremeextremeextremeextremeextremeextreme proportion\"",
+      "uri": "sip:user@example.com:6000;unknownparam1=verylonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglongvalue;longparamnamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamename=shortvalue;verylonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglongParameterNameWithNoValue",
+      "params": {}
+    },
+    "from": {
+      "uri": "sip:amazinglylongcallernameamazinglylongcallernameamazinglylongcallernameamazinglylongcallernameamazinglylongcallername@example.net",
+      "params": {
+        "tag": "12982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982982424",
+        "unknownheaderparamnamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamenamename": "unknowheaderparamvaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevalue"
+      }
+    },
+    "call-id": "longreq.onereallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallyreallylongcallid",
+    "cseq": {
+      "seq": 3882340,
+      "method": "INVITE"
+    },
+    "unknown-longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglong-name": "unknown-longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglong-value; unknown-longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglong-parameter-name = unknown-longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglong-parameter-value",
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip33.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip32.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip31.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip30.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip29.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip28.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip27.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip26.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip25.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip24.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip23.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip22.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip21.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip20.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip19.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip18.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip17.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip16.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip15.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip14.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip13.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip12.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip11.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip10.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip9.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip8.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip7.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip6.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip5.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip4.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip3.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip2.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "sip1.example.com",
+        "params": {}
+      },
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "host.example.com",
+        "params": {
+          "received": "192.0.2.5",
+          "branch": "verylonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglongbranchvalue"
+        }
+      }
+    ],
+    "max-forwards": "70",
+    "contact": [
+      {
+        "uri": "sip:amazinglylongcallernameamazinglylongcallernameamazinglylongcallernameamazinglylongcallernameamazinglylongcallername@host5.example.net",
+        "params": {}
+      }
+    ],
+    "content-type": "application/sdp",
+    "content-length": 150
+  },
+  "content": "v=0\r\no=mhandley 29739 7272939 IN IP4 192.0.2.1\r\ns=-\r\nc=IN IP4 192.0.2.1\r\nt=0 0\r\nm=audio 49217 RTP/AVP 0 12\r\nm=video 3227 RTP/AVP 31\r\na=rtpmap:31 LPC\r\n"
+}

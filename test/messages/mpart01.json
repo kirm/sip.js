@@ -1,0 +1,53 @@
+{
+  "method": "MESSAGE",
+  "uri": "sip:kumiko@example.org",
+  "version": "2.0",
+  "headers": {
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "127.0.0.1",
+        "port": 5070,
+        "params": {
+          "branch": "z9hG4bK-d87543-4dade06d0bdb11ee-1--d87543-"
+        }
+      }
+    ],
+    "max-forwards": "70",
+    "route": [
+      {
+        "uri": "sip:127.0.0.1:5080",
+        "params": {}
+      }
+    ],
+    "identity": "r5mwreLuyDRYBi/0TiPwEsY3rEVsk/G2WxhgTV1PF7hHuLIK0YWVKZhKv9Mj8UeXqkMVbnVq37CD+813gvYjcBUaZngQmXc9WNZSDNGCzA+fWl9MEUHWIZo1CeJebdY/XlgKeTa0Olvq0rt70Q5jiSfbqMJmQFteeivUhkMWYUA=",
+    "contact": [
+      {
+        "uri": "sip:fluffy@127.0.0.1:5070",
+        "params": {}
+      }
+    ],
+    "to": {
+      "uri": "sip:kumiko@example.org",
+      "params": {}
+    },
+    "from": {
+      "uri": "sip:fluffy@example.com",
+      "params": {
+        "tag": "2fb0dcc9"
+      }
+    },
+    "call-id": "3d9485ad0c49859b@Zmx1ZmZ5LW1hYy0xNi5sb2NhbA..",
+    "cseq": {
+      "seq": 1,
+      "method": "MESSAGE"
+    },
+    "content-transfer-encoding": "binary",
+    "content-type": "multipart/mixed;boundary=7a9cbec02ceef655",
+    "date": "Sat, 15 Oct 2005 04:44:56 GMT",
+    "user-agent": "SIPimp.org/0.2.5 (curses)",
+    "content-length": 553
+  },
+  "content": "--7a9cbec02ceef655\r\nContent-Type: text/plain\r\nContent-Transfer-Encoding: binary"
+}

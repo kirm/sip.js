@@ -1,0 +1,42 @@
+{
+  "version": "2.0",
+  "status": 100,
+  "reason": "",
+  "headers": {
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "192.0.2.105",
+        "params": {
+          "branch": "z9hG4bK2398ndaoe"
+        }
+      }
+    ],
+    "call-id": "noreason.asndj203insdf99223ndf",
+    "cseq": {
+      "seq": 35,
+      "method": "INVITE"
+    },
+    "from": {
+      "uri": "sip:user@example.com",
+      "params": {
+        "tag": "39ansfi3"
+      }
+    },
+    "to": {
+      "uri": "sip:user@example.edu",
+      "params": {
+        "tag": "902jndnke3"
+      }
+    },
+    "content-length": 0,
+    "contact": [
+      {
+        "uri": "sip:user@host105.example.com",
+        "params": {}
+      }
+    ]
+  },
+  "content": ""
+}

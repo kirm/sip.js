@@ -1,0 +1,36 @@
+{
+  "method": "OPTIONS",
+  "uri": "sip:user@example.com",
+  "version": "2.0",
+  "headers": {
+    "to": {
+      "uri": "sip:user@example.com",
+      "params": {}
+    },
+    "from": {
+      "name": "caller",
+      "uri": "sip:caller@example.com",
+      "params": {
+        "tag": "323"
+      }
+    },
+    "max-forwards": "70",
+    "call-id": "lwsdisp.1234abcd@funky.example.com",
+    "cseq": {
+      "seq": 60,
+      "method": "OPTIONS"
+    },
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "funky.example.com",
+        "params": {
+          "branch": "z9hG4bKkdjuw"
+        }
+      }
+    ],
+    "content-length": 0
+  },
+  "content": ""
+}

@@ -1,0 +1,45 @@
+{
+  "method": "REGISTER",
+  "uri": "sip:example.com",
+  "version": "2.0",
+  "headers": {
+    "to": {
+      "uri": "sip:null-%00-null@example.com",
+      "params": {}
+    },
+    "from": {
+      "uri": "sip:null-%00-null@example.com",
+      "params": {
+        "tag": "839923423"
+      }
+    },
+    "max-forwards": "70",
+    "call-id": "escnull.39203ndfvkjdasfkq3w4otrq0adsfdfnavd",
+    "cseq": {
+      "seq": 14398234,
+      "method": "REGISTER"
+    },
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "host5.example.com",
+        "params": {
+          "branch": "z9hG4bKkdjuw"
+        }
+      }
+    ],
+    "contact": [
+      {
+        "uri": "sip:%00@host5.example.com",
+        "params": {}
+      },
+      {
+        "uri": "sip:%00%00@host5.example.com",
+        "params": {}
+      }
+    ],
+    "content-length": 0
+  },
+  "content": ""
+}

@@ -1,0 +1,36 @@
+{
+  "method": "OPTIONS",
+  "uri": "sip:user;par=u%40example.net@example.com",
+  "version": "2.0",
+  "headers": {
+    "to": {
+      "uri": "sip:j_user@example.com",
+      "params": {}
+    },
+    "from": {
+      "uri": "sip:caller@example.org",
+      "params": {
+        "tag": "33242"
+      }
+    },
+    "max-forwards": "3",
+    "call-id": "semiuri.0ha0isndaksdj",
+    "cseq": {
+      "seq": 8,
+      "method": "OPTIONS"
+    },
+    "accept": "application/sdp, application/pkcs7-mime,\r\n        multipart/mixed, multipart/signed,\r\n        message/sip, message/sipfrag",
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "192.0.2.1",
+        "params": {
+          "branch": "z9hG4bKkdjuw"
+        }
+      }
+    ],
+    "content-length": 0
+  },
+  "content": ""
+}

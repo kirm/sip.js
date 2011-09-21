@@ -1,0 +1,43 @@
+{
+  "version": "2.0",
+  "status": 200,
+  "reason": "= 2**3 * 5**2 но сто девяносто девять - простое",
+  "headers": {
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "192.0.2.198",
+        "params": {
+          "branch": "z9hG4bK1324923"
+        }
+      }
+    ],
+    "call-id": "unreason.1234ksdfak3j2erwedfsASdf",
+    "cseq": {
+      "seq": 35,
+      "method": "INVITE"
+    },
+    "from": {
+      "uri": "sip:user@example.com",
+      "params": {
+        "tag": "11141343"
+      }
+    },
+    "to": {
+      "uri": "sip:user@example.edu",
+      "params": {
+        "tag": "2229"
+      }
+    },
+    "content-length": 154,
+    "content-type": "application/sdp",
+    "contact": [
+      {
+        "uri": "sip:user@host198.example.com",
+        "params": {}
+      }
+    ]
+  },
+  "content": "v=0\r\no=mhandley 29739 7272939 IN IP4 192.0.2.198\r\ns=-\r\nc=IN IP4 192.0.2.198\r\nt=0 0\r\nm=audio 49217 RTP/AVP 0 12\r\nm=video 3227 RTP/AVP 31\r\na=rtpmap:31 LPC\r\n"
+}

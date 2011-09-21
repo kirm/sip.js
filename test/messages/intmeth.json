@@ -1,0 +1,39 @@
+{
+  "method": "!interesting-Method0123456789_*+`.%indeed'~",
+  "uri": "sip:1_unusual.URI~(to-be!sure)&isn't+it$/crazy?,/;;*:&it+has=1,weird!*pas$wo~d_too.(doesn't-it)@example.com",
+  "version": "2.0",
+  "headers": {
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "TCP",
+        "host": "host1.example.com",
+        "params": {
+          "branch": "z9hG4bK-.!%66*_+`'~"
+        }
+      }
+    ],
+    "to": {
+      "name": "\"BEL:\\\u0007 NUL:\\\u0000 DEL:\\\"",
+      "uri": "sip:1_unusual.URI~(to-be!sure)&isn't+it$/crazy?,/;;*@example.com",
+      "params": {}
+    },
+    "from": {
+      "name": "token1~` token2'+_ token3*%!.-",
+      "uri": "sip:mundane@example.com",
+      "params": {
+        "fromparam''~+*_!.-%": "\"работающий\"",
+        "tag": "_token~1'+`*%!-."
+      }
+    },
+    "call-id": "intmeth.word%ZK-!.*_+'@word`~)(><:\\/\"][?}{",
+    "cseq": {
+      "seq": 139122385,
+      "method": "!interesting-Method0123456789_*+`.%indeed'~"
+    },
+    "max-forwards": "255",
+    "extensionheader-!.%*+_`'~": "﻿大停電",
+    "content-length": 0
+  },
+  "content": ""
+}

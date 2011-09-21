@@ -1,0 +1,41 @@
+{
+  "method": "REGISTER",
+  "uri": "sip:example.com",
+  "version": "2.0",
+  "headers": {
+    "to": {
+      "uri": "sip:j.user@example.com",
+      "params": {}
+    },
+    "from": {
+      "uri": "sip:j.user@example.com",
+      "params": {
+        "tag": "43251j3j324"
+      }
+    },
+    "max-forwards": "8",
+    "call-id": "dblreq.0ha0isndaksdj99sdfafnl3lk233412",
+    "contact": [
+      {
+        "uri": "sip:j.user@host.example.com",
+        "params": {}
+      }
+    ],
+    "cseq": {
+      "seq": 8,
+      "method": "REGISTER"
+    },
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "192.0.2.125",
+        "params": {
+          "branch": "z9hG4bKkdjuw23492"
+        }
+      }
+    ],
+    "content-length": 0
+  },
+  "content": "\r\nINVITE sip:joe@example.com SIP/2.0\r\nt: sip:joe@example.com\r\nFrom: sip:caller@example.net;tag=141334\r\nMax-Forwards: 8\r\nCall-ID: dblreq.0ha0isnda977644900765@192.0.2.15\r\nCSeq: 8 INVITE\r\nVia: SIP/2.0/UDP 192.0.2.15;branch=z9hG4bKkdjuw380234\r\nContent-Type: application/sdp\r\nContent-Length: 150"
+}
