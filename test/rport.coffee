@@ -52,13 +52,5 @@ test3 = (success) ->
 
   sip.send sip.copyMessage(message), () -> success()
 
-runTests = (tests) -> 
-  if tests.length == 0
-    process.exit()
-  else
-    tests[0] () -> 
-      console.log 'ok'
-      runTests tests[1...tests.length]
-
-runTests [test1, test2, test3]
+exports.tests = [test1, test2, test3]
  

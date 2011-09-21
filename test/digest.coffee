@@ -88,15 +88,6 @@ test4 = (success) ->
   assert.ok (new Date() - digest.extractNonceTimestamp(digest.generateNonce('1234'), '1234')) < 1000, 'timestamped nonce fail'
   success() 
 
-runTests = (tests) -> 
-  if tests.length == 0
-    process.exit()
-  else
-    tests[0] () -> 
-      console.log 'ok'
-      runTests tests[1...tests.length]
-
-runTests [test1, test2, test3, test4]
-
+exports.tests = [test1, test2, test3, test4]
  
  
