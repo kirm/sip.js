@@ -2,9 +2,13 @@ var utils = require('sys');
 var net = require('net');
 var dns = require('dns');
 var assert = require('assert');
+var dgram = require('dgram');
+
+var v05 = !(process.node < 'v0.5.0');
 
 //Various utility stuff
 
+if(!v05) {
 //node.js 'dgram' module do not allow proper ICMP errors handling
 var udp = (function() {
   var events = require('events');
@@ -115,6 +119,7 @@ var udp = (function() {
 
   return { createSocket: function(listener) { return new Socket(listener); } };
 })();
+}
 
 function debug(e) {
   if(e.stack) {
@@ -623,7 +628,35 @@ function makeTcpTransport(options, callback) {
   }
 }
 
-function makeUdpTransport(options, callback) {
+function makeUdpTransport_V0_5(options, callback) {
+  var socket = dgram.createSocket('udp4', function(data, rinfo) {
+    var msg = parseMessage(data);
+
+    if(msg.method) {
+      msg.headers.via[0].params.received = rinfo.address;
+      if(msg.headers.via[0].params.hasOwnProperty('rport'))
+        msg.headers.via[0].params.rport = rinfo.port;
+    }
+
+    callback(parseMessage(data), {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
+  });
+
+  socket.bind(options.port || 5060, options.address);
+
+  return {
+    open: function(remote, error) {
+      return {
+        send: function(m) {
+          socket.send(new Buffer(m, 'ascii'), 0, m.length, remote.port, remote.address);          
+        },
+        release : function() {}
+      }; 
+    },
+    destroy: function() { socket.close(); }
+  }
+}
+
+function makeUdpTransport_pre_V0_5(options, callback) {
   var connections = Object.create(null);
 
   function listener(data, rinfo) {
@@ -690,6 +723,8 @@ function makeUdpTransport(options, callback) {
     destroy: function() { socket.close(); }
   };
 }
+
+var makeUdpTransport = v05 ? makeUdpTransport_V0_5 : make_UdpTransport_pre_V0_5; 
 
 function makeTransport(options, callback) {
   var protocols = {};
