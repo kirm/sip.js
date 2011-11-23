@@ -1039,7 +1039,9 @@ function makeTransactionLayer(options, transport) {
 
       var transaction = rq.method === 'INVITE' ? createInviteClientTransaction : createClientTransaction;
 
-      resolve(parseUri(rq.uri), function(address) {
+      var hop = rq.headers.route || rq.uri;
+
+      resolve(parseUri(hop), function(address) {
         var onresponse;
 
         function next() {
