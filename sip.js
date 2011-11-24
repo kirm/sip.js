@@ -355,6 +355,8 @@ function stringifyUri(uri) {
   return s;
 }
 
+exports.stringifyUri = stringifyUri;
+
 function stringifyParams(params) {
   var s = '';
   for(var n in params) {
