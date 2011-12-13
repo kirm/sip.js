@@ -539,15 +539,17 @@ function parseMessage(s) {
   if(r) {
     var m = parse(r[0]);
 
-    if(m.headers['content-length']) {
-      var c = Math.max(0, Math.min(m.headers['content-length'], r[1].length));
-      m.content = r[1].substring(0, c);
-    }
-    else {
-      m.content = r[1];
-    }
+    if(m) {
+      if(m.headers['content-length']) {
+        var c = Math.max(0, Math.min(m.headers['content-length'], r[1].length));
+        m.content = r[1].substring(0, c);
+      }
+      else {
+        m.content = r[1];
+      }
       
-    return m;
+      return m;
+    }
   }
 }
 exports.parse = parseMessage;
@@ -633,14 +635,16 @@ function makeTcpTransport(options, callback) {
 function makeUdpTransport_V0_5(options, callback) {
   var socket = dgram.createSocket('udp4', function(data, rinfo) {
     var msg = parseMessage(data);
+    
+    if(msg) {
+      if(msg.method) {
+        msg.headers.via[0].params.received = rinfo.address;
+        if(msg.headers.via[0].params.hasOwnProperty('rport'))
+          msg.headers.via[0].params.rport = rinfo.port;
+      }
 
-    if(msg.method) {
-      msg.headers.via[0].params.received = rinfo.address;
-      if(msg.headers.via[0].params.hasOwnProperty('rport'))
-        msg.headers.via[0].params.rport = rinfo.port;
+      callback(parseMessage(data), {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
     }
-
-    callback(parseMessage(data), {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
   });
 
   socket.bind(options.port || 5060, options.address);
@@ -664,13 +668,15 @@ function makeUdpTransport_pre_V0_5(options, callback) {
   function listener(data, rinfo) {
     var msg = parseMessage(data);
 
-    if(msg.method) {
-      msg.headers.via[0].params.received = rinfo.address;
-      if(msg.headers.via[0].params.hasOwnProperty('rport'))
-        msg.headers.via[0].params.rport = rinfo.port;
-    }
+    if(msg) {
+      if(msg.method) {
+        msg.headers.via[0].params.received = rinfo.address;
+        if(msg.headers.via[0].params.hasOwnProperty('rport'))
+          msg.headers.via[0].params.rport = rinfo.port;
+      }
     
-    callback(parseMessage(data), {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
+      callback(parseMessage(data), {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
+    }
   };
 
   var socket = udp.createSocket(listener);
@@ -1076,7 +1082,18 @@ function makeTransactionLayer(options, transport) {
 
       var transaction = rq.method === 'INVITE' ? createInviteClientTransaction : createClientTransaction;
 
-      resolve(parseUri(rq.uri), function(address) {
+      var hop = parseUri(rq.uri);
+
+      if(rq.headers.route) {
+        if(typeof rq.headers.route === 'string')
+          rq.headers.route = parsers.route({s: rq.headers.route, i:0});
+        
+        var routeuri = parseUri(rq.headers.route[0].uri);
+        if(routeuri.lr !== undefined )
+            hop = routeuri;
+      }
+
+      resolve(hop, function(address) {
         var onresponse;
 
         function next() {
