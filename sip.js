@@ -1087,10 +1087,13 @@ function makeTransactionLayer(options, transport) {
       if(rq.headers.route) {
         if(typeof rq.headers.route === 'string')
           rq.headers.route = parsers.route({s: rq.headers.route, i:0});
-        
-        var routeuri = parseUri(rq.headers.route[0].uri);
-        if(routeuri.lr !== undefined )
-            hop = routeuri;
+
+        hop = parseUri(rq.headers.route[0].uri);
+        if(routeuri.lr === undefined ) {
+          rq.headers.route.shift();
+          rq.headers.route.push({uri: rq.uri});
+          rq.uri = hop;
+        }
       }
 
       resolve(hop, function(address) {
