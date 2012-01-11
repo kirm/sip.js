@@ -4,7 +4,7 @@ var dns = require('dns');
 var assert = require('assert');
 var dgram = require('dgram');
 
-var v05 = !(process.node < 'v0.5.0');
+var v05 = !(process.version < 'v0.5.0');
 
 //Various utility stuff
 
@@ -732,7 +732,7 @@ function makeUdpTransport_pre_V0_5(options, callback) {
   };
 }
 
-var makeUdpTransport = v05 ? makeUdpTransport_V0_5 : make_UdpTransport_pre_V0_5; 
+var makeUdpTransport = v05 ? makeUdpTransport_V0_5 : makeUdpTransport_pre_V0_5; 
 
 function makeTransport(options, callback) {
   var protocols = {};
