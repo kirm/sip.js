@@ -675,7 +675,7 @@ function makeUdpTransport_pre_V0_5(options, callback) {
           msg.headers.via[0].params.rport = rinfo.port;
       }
     
-      callback(parseMessage(data), {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
+      callback(msg, {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
     }
   };
 
