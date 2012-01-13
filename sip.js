@@ -655,6 +655,7 @@ function makeUdpTransport_V0_5(options, callback) {
         send: function(m) {
           socket.send(new Buffer(m, 'ascii'), 0, m.length, remote.port, remote.address);          
         },
+        local: {protocol: 'UDP', address: socket.address().address, port: socket.address().port},
         release : function() {}
       }; 
     },
