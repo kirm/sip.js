@@ -1113,7 +1113,7 @@ function makeTransactionLayer(options, transport) {
               var send = cn.send.bind(cn);
               send.reliable = cn.local.protocol.toUpperCase() !== 'UDP';
 
-              client_transactions[id] = transaction(rq, send, callback, function() { 
+              client_transactions[id] = transaction(rq, send, onresponse, function() { 
                 delete client_transactions[id];
                 cn.release();
               });
