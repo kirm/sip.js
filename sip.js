@@ -1018,11 +1018,11 @@ function createClientTransaction(rq, transport, tu, cleanup) {
       clearTimeout(f);
     },
     message: function(message, remote) {
-      tu(message);
       if(message.status >= 200)
         sm.enter(completed);
       else
         sm.enter(proceeding);
+      tu(message);
     },
     timerE: function(t) {
       transport(rq);
@@ -1034,7 +1034,13 @@ function createClientTransaction(rq, transport, tu, cleanup) {
     }
   };
 
-  var proceeding = trying;
+  var proceeding = {
+    message: function(message, remote) {
+      if(message.status >= 200)
+        sm.enter(completed);
+      tu(message);
+    }
+  };
 
   var completed = {enter: function () { setTimeout(function() { sm.enter(terminated); }, 5000); } };
 
