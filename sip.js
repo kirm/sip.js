@@ -1194,6 +1194,9 @@ exports.create = function(options, callback) {
       }
       else {
         if(m.method === 'ACK') {
+          if(m.headers.via === undefined)
+            m.headers.via = [];
+
           m.headers.via.unshift({params: {branch: generateBranch()}});
           
           resolve(parseUri(m.uri), function(address) {
