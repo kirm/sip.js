@@ -197,6 +197,7 @@ function parseAOR(data) {
 
   return parseParams(data, {name: r[1], uri: r[2] || r[3]});
 }
+exports.parseAOR = parseAOR;
 
 function parseVia(data) {
   var r = applyRegex(/SIP\s*\/\s*(\d+\.\d+)\s*\/\s*([\S]+)\s+([^\s;:]+)(?:\s*:\s*(\d+))?/g, data);
@@ -1100,7 +1101,7 @@ function makeTransactionLayer(options, transport) {
           rq.headers.route = parsers.route({s: rq.headers.route, i:0});
 
         hop = parseUri(rq.headers.route[0].uri);
-        if(routeuri.lr === undefined ) {
+        if(hop.params.lr === undefined ) {
           rq.headers.route.shift();
           rq.headers.route.push({uri: rq.uri});
           rq.uri = hop;
