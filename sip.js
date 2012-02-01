@@ -437,6 +437,8 @@ function stringify(m) {
     s = m.method + ' ' + stringifyUri(m.uri) + ' SIP/' + stringifyVersion(m.version) + '\r\n';
   }
 
+  m.headers['content-length'] = (m.content || '').length;
+
   for(var n in m.headers) {
     if(typeof m.headers[n] === 'string' || !stringifiers[n]) 
       s += n + ': ' + m.headers[n] + '\r\n';
