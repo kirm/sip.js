@@ -335,7 +335,7 @@ function stringifyUri(uri) {
   var s = (uri.schema || 'sip') + ':';
 
   if(uri.user) {
-    if(uri.passwd)
+    if(uri.password)
       s += uri.user + ':' + uri.password + '@';
     else
       s += uri.user + '@';
