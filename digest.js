@@ -162,7 +162,7 @@ exports.authenticateRequest = function(ctx, rq, creds) {
 exports.signResponse = function(ctx, rs) {
   var nc = numberTo8Hex(ctx.nc);
   rs.headers['authentication-info'] = {
-    qop: q(ctx.qop),
+    qop: ctx.qop,
     cnonce: q(ctx.cnonce),
     nc: nc,
     rspauth: q(calculateDigest({ha1:ctx.ha1, method:'', nonce:ctx.nonce, nc:nc, cnonce:ctx.cnonce, qop:ctx.qop, uri:ctx.uri, entity:rs.content}))
@@ -222,7 +222,7 @@ exports.signRequest = function (ctx, rq, rs, creds) {
     nc: nc,
     algorithm: q(ctx.algorithm),
     cnonce: q(ctx.cnonce),
-    qop: q(ctx.qop),
+    qop: ctx.qop,
     opaque: q(ctx.opaque),
     response: q(calculateDigest({ha1:ctx.ha1, method:rq.method, nonce:ctx.nonce, nc:nc, cnonce:ctx.cnonce, qop:ctx.qop, uri:ctx.uri, entity:rq.content}))    
   };
