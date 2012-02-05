@@ -1163,6 +1163,8 @@ function makeTransactionLayer(options, transport) {
 exports.makeTransactionLayer = makeTransactionLayer;
 
 exports.create = function(options, callback) {
+  var errorLog = (options.logger && options.logger.error) || function() {};
+
   var transport = makeTransport(options, function(m,remote) {
     try {
       var t = m.method ? transaction.getServer(m) : transaction.getClient(m);
@@ -1186,8 +1188,7 @@ exports.create = function(options, callback) {
       }
     } 
     catch(e) {
-      if(options.logger && options.logger.error)
-        options.logger.error(e); 
+      errorLog(e);
     }
   });
   
@@ -1207,12 +1208,19 @@ exports.create = function(options, callback) {
           m.headers.via.unshift({params: {branch: generateBranch()}});
           
           resolve(parseUri(m.uri), function(address) {
-            if(address.length === 0) return;
+            if(address.length === 0) {
+              errorLog(new Error("ACK: couldn't resove" + stringifyUri(m.uri)));
+              return;
+            }
           
-            var cn = transport.open(address[0]);
+            var cn = transport.open(address[0], errorLog);
             try {
               cn.send(m);
-            } finally {
+            } 
+            catch(e) {
+              errorLog(e);
+            }
+            finally {
               cn.release();
             }
           });
