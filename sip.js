@@ -803,12 +803,46 @@ function resolve(uri, action) {
   if(uri.host.match(/^\d{1,3}(\.\d{1,3}){3}$/))
     return action([{protocol: uri.params.transport || 'UDP', address: uri.host, port: uri.port || 5060}]);
 
-  var protocols = uri.params.protocol ? [uri.params.protocol] : ['UDP', 'TCP'];
-  dns.resolve4(uri.host, function(err, address) {
-    address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
+  if(uri.port) {
+    var protocols = uri.params.protocol ? [uri.params.protocol] : ['UDP', 'TCP'];
+    
+    dns.resolve4(uri.host, function(err, address) {
+      address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
       .reduce(function(arr,v) { return arr.concat(v); }, []);
-    action(address);
-  });
+      action(address);
+    });
+  }
+  else {
+    var protocols = uri.params.protocol ? [uri.params.protocol] : ['tcp', 'udp'];
+  
+    var n = protocols.length;
+    var addresses = [];
+
+    protocols.forEach(function(proto) {
+      dns.resolveSrv('_sip._'+proto+'.'+uri.host, function(e, r) {
+        --n;
+        if(Array.isArray(r)) {
+          n += r.length;
+          r.forEach(function(srv) {
+            dns.resolve4(srv.name, function(e, r) {
+              addresses = addresses.concat((r||[]).map(function(a) { return {protocol: proto, address: a, port: srv.port};}));
+            
+              if((--n)===0) // all outstanding requests has completed
+                action(addresses);
+            });
+          });
+        }
+        else if(0 === n) {
+          // all srv requests failed
+          dns.resolve4(uri.host, function(err, address) {
+            address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
+              .reduce(function(arr,v) { return arr.concat(v); }, []);
+            action(address);
+          });
+        }
+      })
+    });
+  }
 }
 
 exports.resolve = resolve;
