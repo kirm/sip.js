@@ -1030,7 +1030,7 @@ function createInviteClientTransaction(rq, transport, tu, cleanup) {
     },
     message: function(m) {
       if(m.status >= 200 && m.status <= 299)
-        tu(message);
+        tu(m);
     }
   };
 
