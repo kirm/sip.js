@@ -1,4 +1,4 @@
-var util = require('sys');
+var util = require('util');
 
 function parseC(c) {
   var t = c.split(/\s+/);

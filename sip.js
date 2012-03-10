@@ -1,4 +1,4 @@
-var utils = require('sys');
+var util = require('util');
 var net = require('net');
 var dns = require('dns');
 var assert = require('assert');
@@ -71,7 +71,7 @@ var udp = (function() {
     self.watcher.start(); 
   }
 
-  utils.inherits(Socket, events.EventEmitter); 
+  util.inherits(Socket, events.EventEmitter); 
 
   Socket.prototype.bind = function(port, address) {
     binding.bind(this.fd, port, address);
@@ -123,10 +123,10 @@ var udp = (function() {
 
 function debug(e) {
   if(e.stack) {
-    utils.debug(e + '\n' + e.stack);
+    util.debug(e + '\n' + e.stack);
   }
   else
-    utils.debug(utils.inspect(e));
+    util.debug(util.inspect(e));
 }
 
 // Actual stack code begins here
@@ -770,7 +770,7 @@ function makeTransport(options, callback) {
           m.headers.via[0].params.rport = null;
         }
         } catch(e) {
-          utils.debug(e);
+          util.debug(e);
         }
       }
       options.logger && options.logger.send && options.logger.send(m, target);
@@ -1030,7 +1030,7 @@ function createInviteClientTransaction(rq, transport, tu, cleanup) {
     },
     message: function(m) {
       if(m.status >= 200 && m.status <= 299)
-        tu(message);
+        tu(m);
     }
   };
 
