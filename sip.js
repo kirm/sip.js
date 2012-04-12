@@ -1166,32 +1166,32 @@ function makeTransactionLayer(options, transport) {
               });
             }
             catch(e) {
-              callback(makeResponse(rq, 503));  
+              onresponse(makeResponse(rq, 503));  
             }
           }
           else
-            callback(makeResponse(rq, 404));
+            onresponse(makeResponse(rq, 404));
         }
 
         function searching(rs) {
           if(rs.status === 503)
-            next();
-          else if(rs.status > 100) {
+            return next();
+          else if(rs.status > 100)
             onresponse = callback;
+          
+          callback(rs);
         }
         
-        callback(rs);
-      }
-
-      next();
-    });
-  },
-  getServer: function(m) {
-    return server_transactions[makeTransactionId(m)];
-  },
-  getClient: function(m) {
-    return client_transactions[makeTransactionId(m)];
-  }};
+        next();
+      });
+    },
+    getServer: function(m) {
+      return server_transactions[makeTransactionId(m)];
+    },
+    getClient: function(m) {
+      return client_transactions[makeTransactionId(m)];
+    }
+  };
 }
 
 exports.makeTransactionLayer = makeTransactionLayer;
