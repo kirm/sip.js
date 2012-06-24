@@ -1,5 +1,5 @@
 var sip=require('sip');
-var util=require('sys');
+var util=require('util');
 
 var contexts = {};
 

@@ -6,7 +6,7 @@
 
 var sip = require('sip');
 var proxy = require('sip/proxy');
-var util = require('sys');
+var util = require('util');
 
 proxy.start(
 {

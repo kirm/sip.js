@@ -1,7 +1,7 @@
 var sip = require('../sip.js');
 var assert = require('assert');
 var udp = require('../udp.js');
-var sys = require('sys');
+var util = require('util');
 var net = require('net');
 
 var msg = {
@@ -45,5 +45,5 @@ sendSocket.on('data', sip.makeStreamParser(function(m) {
 sendSocket.on('end', function() {
   sendSocket.end();
   transport.destroy();
-  sys.print('PASSED\n');
+  util.print('PASSED\n');
 });

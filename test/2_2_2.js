@@ -1,7 +1,7 @@
 var sip = require('../sip.js');
 var assert = require('assert');
 var udp = require('../udp.js');
-var sys = require('sys');
+var util = require('util');
 var net = require('net');
 
 var msg = {
@@ -24,7 +24,7 @@ var server = net.createServer(function(stream) {
     transport.destroy();
     stream.end();
     server.close();
-    sys.print('PASSED\n');
+    util.print('PASSED\n');
   }));
 });
 
