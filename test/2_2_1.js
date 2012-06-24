@@ -1,7 +1,7 @@
 var sip = require('../sip.js');
 var assert = require('assert');
 var udp = require('../udp.js');
-var sys = require('sys');
+var util = require('util');
 var net = require('net');
 
 var msg = {
@@ -20,7 +20,7 @@ var transport = sip.makeTransport({}, function(m, remote) {
   assert.deepEqual(remote, {protocol:'TCP', address: sendSocket.address().address, port: sendSocket.address().port});
   transport.destroy();
   sendSocket.end();
-  sys.print('PASSED\n');
+  util.print('PASSED\n');
 });
 
 var sendSocket = net.createConnection(5060);

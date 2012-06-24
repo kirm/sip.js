@@ -1,7 +1,7 @@
 var sip = require('../sip.js');
 var assert = require('assert');
 var udp = require('../udp.js');
-var sys = require('sys');
+var util = require('util');
 
 var msg = {
   uri: 'sip:test',
@@ -17,7 +17,7 @@ var transport = sip.makeTransport({}, function() {});
 
 var cn = transport.open({protocol: 'UDP', address: '127.0.0.1', port: 5061}, function(e) {
   assert.ok(e.errno === process.ECONNREFUSED);
-  sys.print('PASSED\n');
+  util.print('PASSED\n');
   cn.release();
   transport.destroy();
 });
