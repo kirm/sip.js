@@ -1,7 +1,7 @@
 var sip = require('../sip.js');
 var assert = require('assert');
 var udp = require('../udp.js');
-var sys = require('sys');
+var util = require('util');
 
 var msg = {
   uri: 'sip:test',
@@ -19,7 +19,7 @@ var socket = udp.createSocket(function(data, rinfo) {
   assert.deepEqual(msg, sip.parse(data));
   socket.close();
   transport.destroy();
-  sys.print('PASSED\n');
+  util.print('PASSED\n');
 });
 
 socket.bind(5061);
