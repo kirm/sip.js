@@ -624,7 +624,7 @@ function makeTcpTransport(options, callback) {
   });
 
   server.listen(options.port || 5060, options.address);
-  
+
   return {
     open: function(remote, error, dontopen) {
       var id = [remote.address, remote.port].join();
@@ -640,7 +640,7 @@ function makeTcpTransport(options, callback) {
 }
 
 function makeUdpTransport_V0_5(options, callback) {
-  var socket = dgram.createSocket('udp4', function(data, rinfo) {
+  function onMessage(data, rinfo) {
     var msg = parseMessage(data);
     
     if(msg) {
@@ -652,8 +652,9 @@ function makeUdpTransport_V0_5(options, callback) {
 
       callback(msg, {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
     }
-  });
+  }
 
+  var socket = dgram.createSocket(net.isIPv6(options.address) ? 'udp6' : 'udp4', onMessage); 
   socket.bind(options.port || 5060, options.address);
 
   return {
@@ -800,16 +801,27 @@ function makeTransport(options, callback) {
 exports.makeTransport = makeTransport;
 
 function resolve(uri, action) {
-  if(uri.host.match(/^\d{1,3}(\.\d{1,3}){3}$/))
+  if(net.isIp(uri.host))
     return action([{protocol: uri.params.transport || 'UDP', address: uri.host, port: uri.port || 5060}]);
+
+  function resolve46(host, cb) {
+    dns.resolve4(host, function(e4, a4) {
+      dns.resolve6(host, function(e6, a6) {
+        if((a4 || a6).length)
+          cb(null, a4.concat(a6));
+        else
+          cb(e4 || e6, []);
+      });
+    });
+  }
 
   if(uri.port) {
     var protocols = uri.params.protocol ? [uri.params.protocol] : ['UDP', 'TCP'];
     
-    dns.resolve4(uri.host, function(err, address) {
+    resolve46(uri.host, function(err, address4) {
       address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
-      .reduce(function(arr,v) { return arr.concat(v); }, []);
-      action(address);
+        .reduce(function(arr,v) { return arr.concat(v); }, []);
+        action(address);
     });
   }
   else {
@@ -824,7 +836,7 @@ function resolve(uri, action) {
         if(Array.isArray(r)) {
           n += r.length;
           r.forEach(function(srv) {
-            dns.resolve4(srv.name, function(e, r) {
+            resolve46(srv.name, function(e, r) {
               addresses = addresses.concat((r||[]).map(function(a) { return {protocol: proto, address: a, port: srv.port};}));
             
               if((--n)===0) // all outstanding requests has completed
@@ -834,7 +846,7 @@ function resolve(uri, action) {
         }
         else if(0 === n) {
           // all srv requests failed
-          dns.resolve4(uri.host, function(err, address) {
+          resolve46(uri.host, function(err, address) {
             address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
               .reduce(function(arr,v) { return arr.concat(v); }, []);
             action(address);
