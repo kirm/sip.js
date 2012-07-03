@@ -801,7 +801,7 @@ function makeTransport(options, callback) {
 exports.makeTransport = makeTransport;
 
 function resolve(uri, action) {
-  if(net.isIp(uri.host))
+  if(net.isIP(uri.host))
     return action([{protocol: uri.params.transport || 'UDP', address: uri.host, port: uri.port || 5060}]);
 
   function resolve46(host, cb) {
