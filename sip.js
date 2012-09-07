@@ -566,7 +566,7 @@ function makeTcpTransport(options, callback) {
 
   function init(stream, remote) {
     var id = [remote.address, remote.port].join(),
-        local = {protocol: 'TCP', address: stream.address().address, port: stream.address().port},
+        local = {protocol: 'TCP', address: stream.address() && stream.address().address, port: stream.address() && stream.address().port},
         pending = [],
         refs = 0;
 
@@ -574,8 +574,10 @@ function makeTcpTransport(options, callback) {
       try {
         if(stream.readyState === 'opening')
           pending.push(m);
-        else
-          stream.write(m, 'ascii');
+        else {
+          if(m.method) m.headers.via[0].host = stream.address().address;
+          stream.write(stringify(m), 'ascii');
+        }
       }
       catch(e) {
         process.nextTick(stream.emit.bind(stream, 'error', e));
@@ -595,6 +597,7 @@ function makeTcpTransport(options, callback) {
     stream.on('timeout',  function() { if(refs === 0) stream.end(); });
     stream.on('connect',  function() { pending.splice(0).forEach(send); });
     stream.setTimeout(60000);   
+    stream.setMaxListeners(10000);
  
     connections[id] = function(onError) {
       ++refs;
@@ -608,14 +611,14 @@ function makeTcpTransport(options, callback) {
             if(stream.readyState === 'writeOnly')
               stream.end();
             else
-              setTimeout(60000);
+              stream.setTimeout(60000);
           }
         },
         send: send,
         local: local
       }
     };
-    
+
     return connections[id];
   }
   
@@ -633,7 +636,7 @@ function makeTcpTransport(options, callback) {
 
       if(dontopen) return null;
 
-      return init(net.createConnection(remote.port, remote.address), remote)(error);
+      return init(net.connect(remote.port, remote.address), remote)(error);
     },
     destroy: function() { server.close(); }
   }
@@ -661,7 +664,7 @@ function makeUdpTransport_V0_5(options, callback) {
     open: function(remote, error) {
       return {
         send: function(m) {
-          socket.send(new Buffer(m, 'ascii'), 0, m.length, remote.port, remote.address);          
+          socket.send(new Buffer(stringify(m), 'ascii'), 0, m.length, remote.port, remote.address);          
         },
         local: {protocol: 'UDP', address: socket.address().address, port: socket.address().port},
         release : function() {}
@@ -775,7 +778,7 @@ function makeTransport(options, callback) {
         }
       }
       options.logger && options.logger.send && options.logger.send(m, target);
-      obj.send(stringify(m));
+      obj.send(m);
     }}});
   }
 
