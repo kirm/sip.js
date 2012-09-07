@@ -664,7 +664,8 @@ function makeUdpTransport_V0_5(options, callback) {
     open: function(remote, error) {
       return {
         send: function(m) {
-          socket.send(new Buffer(stringify(m), 'ascii'), 0, m.length, remote.port, remote.address);          
+          var s = stringify(m);
+          socket.send(new Buffer(s, 'ascii'), 0, s.length, remote.port, remote.address);          
         },
         local: {protocol: 'UDP', address: socket.address().address, port: socket.address().port},
         release : function() {}
@@ -723,7 +724,8 @@ function makeUdpTransport_pre_V0_5(options, callback) {
 
       return { 
         send: function(m) {
-          socket.send(new Buffer(m, 'ascii'), 0, m.length);
+          var s = stringify(m);
+          socket.send(new Buffer(s, 'ascii'), 0, s.length);
         },
         release: function() { 
           if(onError) socket.removeListener('error', onError);
