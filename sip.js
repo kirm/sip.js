@@ -1114,6 +1114,24 @@ function makeTransactionId(m) {
     return ['INVITE', m.headers['call-id'], m.headers.via[0].params.branch].join();
   return [m.headers.cseq.method, m.headers['call-id'], m.headers.via[0].params.branch].join();
 }
+
+function getNextHop(rq) {
+  var hop = parseUri(rq.uri);
+
+  if(rq.headers.route) {
+    if(typeof rq.headers.route === 'string')
+      rq.headers.route = parsers.route({s: rq.headers.route, i:0});
+
+    hop = parseUri(rq.headers.route[0].uri);
+    if(hop.params.lr === undefined ) {
+      rq.headers.route.shift();
+      rq.headers.route.push({uri: rq.uri});
+      rq.uri = hop;
+    }
+  }
+
+  return hop;
+}
  
 function makeTransactionLayer(options, transport) {
   var server_transactions = Object.create(null);
@@ -1147,21 +1165,7 @@ function makeTransactionLayer(options, transport) {
 
       var transaction = rq.method === 'INVITE' ? createInviteClientTransaction : createClientTransaction;
 
-      var hop = parseUri(rq.uri);
-
-      if(rq.headers.route) {
-        if(typeof rq.headers.route === 'string')
-          rq.headers.route = parsers.route({s: rq.headers.route, i:0});
-
-        hop = parseUri(rq.headers.route[0].uri);
-        if(hop.params.lr === undefined ) {
-          rq.headers.route.shift();
-          rq.headers.route.push({uri: rq.uri});
-          rq.uri = hop;
-        }
-      }
-
-      resolve(hop, function(address) {
+      resolve(getNextHop(rq), function(address) {
         var onresponse;
 
         function next() {
@@ -1258,7 +1262,7 @@ exports.create = function(options, callback) {
 
           m.headers.via.unshift({params: {branch: generateBranch()}});
           
-          resolve(parseUri(m.uri), function(address) {
+          resolve(getNextHop(m), function(address) {
             if(address.length === 0) {
               errorLog(new Error("ACK: couldn't resove" + stringifyUri(m.uri)));
               return;
