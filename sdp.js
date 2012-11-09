@@ -1,83 +1,70 @@
 var util = require('util');
 
-function parseC(c) {
-  var t = c.split(/\s+/);
-  return { nettype: t[0], addrtype: t[1], address: t[2] };
-}
+var parsers = {
+  o: function(o) {
+    var t = o.split(/\s+/);
+    return {
+      username: t[0],
+      id : t[1],
+      version : t[2],
+      nettype : t[3],
+      addrtype : t[4],
+      address : t[5]
+    };
+  },
+  c: function(c) {
+    var t = c.split(/\s+/);
+    return { nettype: t[0], addrtype: t[1], address: t[2] };
+  },
+  m: function(m) {
+    var t = /^(\w+) +(\d+)(?:\/(\d))? +(\S+) (\d+( +\d+)*)/.exec(m);
 
-var reM = /^(\w+) +(\d+)(?:\/(\d))? +(\S+) (\d+( +\d+)*)/;
-function parseM(m) {
-  var tmp = reM.exec(m);
-
-  return {
-    media: tmp[1], 
-    port: +tmp[2],
-    portnum: +(tmp[3] || 1),
-    proto: tmp[4],
-    fmt: tmp[5].split(/\s+/).map(function(x) { return +x; })
-  };
-}
-
-function push(o,i,v) {
-  switch(i) {
-  case 'v':
-  case 'o':
-  case 's':
-  case 'i':
-  case 'u':
-  case 'c':
-    o[i] = v;
-    break;
-  default:
-    if(o[i])
-      o[i].push(v);
-    else
-      o[i] = [v];
-    break;
+    return {
+      media: t[1],
+      port: +t[2],
+      portnum: +(t[3] || 1),
+      proto: t[4],
+      fmt: t[5].split(/\s+/).map(function(x) { return +x; })
+    };
+  },
+  a: function(a) {
+    return a;
   }
-}
+};
 
 exports.parse = function(sdp) {
   var sdp = sdp.split(/\r\n/);
   
-  var result = {};
+  var root = {};
+  var m;
+  root.m = [];
 
   for(var i = 0; i < sdp.length; ++i) {
     var tmp = /^(\w)=(.*)/.exec(sdp[i]);
+    
+    if(tmp) {
 
-    if(tmp[1] === 'm') {
+    var c = (parsers[tmp[1]] || function(x) { return x;})(tmp[2]);
+    switch(tmp[1]) {
+    case 'm':
+      if(m) root.m.push(m);
+      m = c;
+      break;
+    case 'a':
+      var o = (m || root);
+      if(o.a === undefined) o.a = [];
+      o.a.push(c);
+      break;
+    default:
+      (root || m)[tmp[1]] = c;
       break;
     }
-    else {
-      push(result, tmp[1], tmp[2]);
     }
   }
 
-  result.m = [];
-
-  for(;i< sdp.length; ++i) {
-    var tmp = /(\w)=(.*)/.exec(sdp[i]);
-
-    if(!tmp) break;
-
-    if(tmp[1] === 'm') {
-      result.m.push(parseM(tmp[2]));
-    }
-    else {
-      var m = result.m[result.m.length-1];
-      push(m, tmp[1], tmp[2]);
-    }
-  }
-
-  if(result.c)
-    result.c = parseC(result.c);
-
-  result.m.forEach(function(m) {
-    if(m.c)
-      m.c = parseC(result.c);
-  });
-
-  return result;
+  if(m) root.m.push(m);
+  
+  return root;
 };
 
 var stringifiers = {
