@@ -7,7 +7,7 @@ var dgram = require('dgram');
 var v05 = !(process.version < 'v0.5.0');
 
 //Various utility stuff
-
+var hacks = {useOutBoundProxy : false};
 if(!v05) {
 //node.js 'dgram' module do not allow proper ICMP errors handling
 var udp = (function() {
@@ -1124,9 +1124,14 @@ function getNextHop(rq) {
 
     hop = parseUri(rq.headers.route[0].uri);
     if(hop.params.lr === undefined ) {
+      console.log(this);
+      if(hacks.useOutBoundProxy){
+      delete rq.headers.route;
+      }else{
       rq.headers.route.shift();
       rq.headers.route.push({uri: rq.uri});
       rq.uri = hop;
+      }
     }
   }
 
@@ -1219,7 +1224,7 @@ exports.makeTransactionLayer = makeTransactionLayer;
 
 exports.create = function(options, callback) {
   var errorLog = (options.logger && options.logger.error) || function() {};
-
+  hacks.useOutBoundProxy = options.useOutBoundProxy || false;
   var transport = makeTransport(options, function(m,remote) {
     try {
       var t = m.method ? transaction.getServer(m) : transaction.getClient(m);
