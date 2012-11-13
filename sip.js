@@ -1124,7 +1124,6 @@ function getNextHop(rq) {
 
     hop = parseUri(rq.headers.route[0].uri);
     if(hop.params.lr === undefined ) {
-      console.log(this);
       if(hacks.useOutBoundProxy){
       delete rq.headers.route;
       }else{
