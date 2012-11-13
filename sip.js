@@ -1219,7 +1219,7 @@ exports.makeTransactionLayer = makeTransactionLayer;
 
 exports.create = function(options, callback) {
   var errorLog = (options.logger && options.logger.error) || function() {};
-  
+
   var transport = makeTransport(options, function(m,remote) {
     try {
       var t = m.method ? transaction.getServer(m) : transaction.getClient(m);
