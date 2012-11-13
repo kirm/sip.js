@@ -7,6 +7,7 @@ var dgram = require('dgram');
 var v05 = !(process.version < 'v0.5.0');
 
 //Various utility stuff
+
 if(!v05) {
 //node.js 'dgram' module do not allow proper ICMP errors handling
 var udp = (function() {
@@ -1218,6 +1219,7 @@ exports.makeTransactionLayer = makeTransactionLayer;
 
 exports.create = function(options, callback) {
   var errorLog = (options.logger && options.logger.error) || function() {};
+  
   var transport = makeTransport(options, function(m,remote) {
     try {
       var t = m.method ? transaction.getServer(m) : transaction.getClient(m);
