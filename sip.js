@@ -1123,7 +1123,7 @@ function getNextHop(rq) {
       rq.headers.route = parsers.route({s: rq.headers.route, i:0});
 
     hop = parseUri(rq.headers.route[0].uri);
-    if(hop.params.lr === undefined ) {
+    if(hop.params.lr === undefined && (rq.headers.route[0].params||{}).lr === undefined ) {
       rq.headers.route.shift();
       rq.headers.route.push({uri: rq.uri});
       rq.uri = hop;
