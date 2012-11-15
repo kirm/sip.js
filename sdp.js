@@ -56,7 +56,7 @@ exports.parse = function(sdp) {
       o.a.push(c);
       break;
     default:
-      (root || m)[tmp[1]] = c;
+      (m || root)[tmp[1]] = c;
       break;
     }
     }
