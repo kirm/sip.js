@@ -1,5 +1,6 @@
 var crypto = require('crypto');
 var util = require('util');
+var stringifyUri = require('./sip').stringifyUri; 
 
 function unq(a) {
   if(a && a[0] === '"' && a[a.length-1] === '"')
@@ -211,14 +212,14 @@ exports.signRequest = function (ctx, rq, rs, creds) {
 
   var nc = ctx.nc !== undefined ? numberTo8Hex(++ctx.nc) : undefined;
 
-  ctx.uri = rq.uri;
+  ctx.uri = stringifyUri(rq.uri);
   
   var signature = {
     scheme: 'Digest',
     realm: q(ctx.realm),
     username: q(ctx.user),
     nonce: q(ctx.nonce), 
-    uri: q(rq.uri),
+    uri: q(ctx.uri),
     nc: nc,
     algorithm: q(ctx.algorithm),
     cnonce: q(ctx.cnonce),
