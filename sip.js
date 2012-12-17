@@ -812,7 +812,7 @@ function resolve(uri, action) {
   function resolve46(host, cb) {
     dns.resolve4(host, function(e4, a4) {
       dns.resolve6(host, function(e6, a6) {
-        if((a4 || a6).length)
+        if((a4 || a6) && (a4 || a6).length)
           cb(null, a4.concat(a6));
         else
           cb(e4 || e6, []);
@@ -823,7 +823,7 @@ function resolve(uri, action) {
   if(uri.port) {
     var protocols = uri.params.protocol ? [uri.params.protocol] : ['UDP', 'TCP'];
     
-    resolve46(uri.host, function(err, address4) {
+    resolve46(uri.host, function(err, address) {
       address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
         .reduce(function(arr,v) { return arr.concat(v); }, []);
         action(address);
