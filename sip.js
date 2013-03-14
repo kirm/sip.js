@@ -4,123 +4,6 @@ var dns = require('dns');
 var assert = require('assert');
 var dgram = require('dgram');
 
-var v05 = !(process.version < 'v0.5.0');
-
-//Various utility stuff
-
-if(!v05) {
-//node.js 'dgram' module do not allow proper ICMP errors handling
-var udp = (function() {
-  var events = require('events');
-
-  try {
-    var IOWatcher    = process.binding('io_watcher').IOWatcher;
-  } 
-  catch(e) {
-    var IOWatcher    = process.IOWatcher;
-  }
-  var binding      = process.binding('net');
-  var socket       = binding.socket;
-  var recvfrom     = binding.recvfrom;
-  var close        = binding.close;
-
-  var pool = null;
-
-  function getPool() {
-    var minPoolAvail = 1024 * 8;
-
-    var poolSize = 1024 * 64;
-
-    if (pool === null || (pool.used + minPoolAvail  > pool.length)) {
-      pool = new Buffer(poolSize);
-      pool.used = 0;
-    }
-
-    return pool;
-  }
-
-  function Socket(listener) {
-    events.EventEmitter.call(this);
-    var self = this;
-    self.fd = socket('udp4');
-
-    if(typeof listener === 'function')
-      self.on('message', listener);
-
-    self.watcher = new IOWatcher();
-    self.watcher.host = self;
-    self.watcher.callback = function() {
-      try {
-        while(self.fd) {
-          var p = getPool();
-          var rinfo = recvfrom(self.fd, p, p.used, p.length-p.used, 0);
-       
-          if(!rinfo) return;
-
-          self.emit('message', p.slice(p.used, p.used + rinfo.size), rinfo);
-
-          p.used += rinfo.size;
-        }
-      }
-      catch(e) {
-        self.emit('error', e);
-      } 
-    };
-
-    self.watcher.set(this.fd, true, false); 
-    self.watcher.start(); 
-  }
-
-  util.inherits(Socket, events.EventEmitter); 
-
-  Socket.prototype.bind = function(port, address) {
-    binding.bind(this.fd, port, address);
-    this.emit('listening');
-  }
-
-  Socket.prototype.connect = function(port, address) {
-    binding.connect(this.fd, port, address);
-  }
-
-  Socket.prototype.address = function () {
-    return binding.getsockname(this.fd);
-  };
-
-  Socket.prototype.send = function(buffer, offset, length, callback) {
-    if (typeof offset !== "number" || typeof length !== "number") {
-      throw new Error("send takes offset and length as args 2 and 3");
-    }
-
-    try {
-      var bytes = binding.sendMsg(this.fd, buffer, offset, length);
-    }
-    catch(err) {
-      if (callback) {
-        callback(err);
-      }
-      return;
-    }
- 
-    if(callback) {
-      callback(null, bytes);
-    }
-  };
-
-  Socket.prototype.close = function () {
-    if (!this.fd) throw new Error('Not running');
-
-    this.watcher.stop();
-
-    close(this.fd);
-    this.fd = null;
-
-    this.emit("close");
-  };
-
-  return { createSocket: function(listener) { return new Socket(listener); } };
-})();
-}
-
 function debug(e) {
   if(e.stack) {
     util.debug(e + '\n' + e.stack);
@@ -642,7 +525,7 @@ function makeTcpTransport(options, callback) {
   }
 }
 
-function makeUdpTransport_V0_5(options, callback) {
+function makeUdpTransport(options, callback) {
   function onMessage(data, rinfo) {
     var msg = parseMessage(data);
     
@@ -674,79 +557,6 @@ function makeUdpTransport_V0_5(options, callback) {
     destroy: function() { socket.close(); }
   }
 }
-
-function makeUdpTransport_pre_V0_5(options, callback) {
-  var connections = Object.create(null);
-
-  function listener(data, rinfo) {
-    var msg = parseMessage(data);
-
-    if(msg) {
-      if(msg.method) {
-        msg.headers.via[0].params.received = rinfo.address;
-        if(msg.headers.via[0].params.hasOwnProperty('rport'))
-          msg.headers.via[0].params.rport = rinfo.port;
-      }
-    
-      callback(msg, {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
-    }
-  };
-
-  var socket = udp.createSocket(listener);
-
-  socket.bind(options.port || 5060, options.address);
-  socket.on('error', function() {});
-  
-  function open(remote) {
-    var socket = udp.createSocket(listener),
-        id = [remote.address, remote.port].join(),
-        local,
-        refs = 0,
-        timeout;
-    
-    socket.bind(options.port || 5060, options.address);
-    socket.connect(remote.port, remote.address);
-    
-    local = {protocol: 'UDP', address: socket.address().address, port: socket.address().port};
-    
-    socket.on('error', function() {});
-    socket.on('close', function() { delete connections[id]; });
-
-    return connections[id] = function(onError) {
-      ++refs;
-      
-      if(timeout) {
-        clearTimeout(timeout);
-        timeout = null;
-      }
-
-      if(onError) socket.on('error', onError);
-
-      return { 
-        send: function(m) {
-          var s = stringify(m);
-          socket.send(new Buffer(s, 'ascii'), 0, s.length);
-        },
-        release: function() { 
-          if(onError) socket.removeListener('error', onError);
-          
-          if(--refs === 0)
-            timeout = setTimeout(socket.close.bind(socket), 30000);
-        },
-        local: local
-      };
-    };
-  };
- 
-  return {
-    open: function(remote, error) { 
-      return (connections[[remote.address, remote.port].join()] || open(remote))(error);
-    },
-    destroy: function() { socket.close(); }
-  };
-}
-
-var makeUdpTransport = v05 ? makeUdpTransport_V0_5 : makeUdpTransport_pre_V0_5; 
 
 function makeTransport(options, callback) {
   var protocols = {};
