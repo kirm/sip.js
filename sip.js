@@ -444,6 +444,17 @@ function parseMessage(s) {
 }
 exports.parse = parseMessage;
 
+function checkMessage(msg) {
+  return (msg.method || (msg.status >= 100 && msg.status <= 999)) &&
+    msg.headers &&
+    Array.isArray(msg.headers.via) &&
+    msg.headers.via.length > 0 &&
+    msg.headers['call-id'] &&
+    msg.headers.to &&
+    msg.headers.from &&
+    msg.headers.cseq;
+}
+
 function makeTcpTransport(options, callback) {
   var connections = Object.create(null);
 
@@ -470,8 +481,10 @@ function makeTcpTransport(options, callback) {
     stream.setEncoding('ascii');
 
     stream.on('data', makeStreamParser(function(m) { 
-      if(m.method) m.headers.via[0].params.received = remote.address;
-      callback(m, remote); 
+      if(checkMessage(m)) {
+        if(m.method) m.headers.via[0].params.received = remote.address;
+        callback(m, remote);
+      }
     }));
 
     stream.on('close',    function() { delete connections[id]; });
@@ -529,7 +542,7 @@ function makeUdpTransport(options, callback) {
   function onMessage(data, rinfo) {
     var msg = parseMessage(data);
     
-    if(msg) {
+    if(msg && checkMessage(msg)) {
       if(msg.method) {
         msg.headers.via[0].params.received = rinfo.address;
         if(msg.headers.via[0].params.hasOwnProperty('rport'))
