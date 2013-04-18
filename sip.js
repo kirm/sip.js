@@ -795,7 +795,7 @@ function createServerTransaction(transport, cleanup) {
   return {send: sm.signal.bind(sm, 'send'), message: sm.signal.bind(sm, 'message')};
 }
 
-function createInviteClientTransaction(rq, transport, tu, cleanup) {
+function createInviteClientTransaction(rq, transport, tu, cleanup, options) {
   var sm = makeSM();
 
   var a, b;
@@ -849,7 +849,8 @@ function createInviteClientTransaction(rq, transport, tu, cleanup) {
       from: rq.headers.from,
       cseq: {method: 'ACK', seq: rq.headers.cseq.seq},
       'call-id': rq.headers['call-id'],
-      via: [rq.headers.via[0]]
+      via: [rq.headers.via[0]],
+      'max-forwards': (options && options['max-forwards']) || 70 
     }
   };
 
@@ -1005,9 +1006,10 @@ function makeTransactionLayer(options, transport) {
               send.reliable = cn.local.protocol.toUpperCase() !== 'UDP';
 
               client_transactions[id] = transaction(rq, send, onresponse, function() { 
-                delete client_transactions[id];
-                cn.release();
-              });
+                  delete client_transactions[id];
+                  cn.release();
+                }, 
+                options);
             }
             catch(e) {
               onresponse(makeResponse(rq, 503));  
