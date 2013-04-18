@@ -553,8 +553,11 @@ function makeUdpTransport(options, callback) {
     }
   }
 
+  var address = options.address || '0.0.0.0';
+  var port = options.port || 5060;
+
   var socket = dgram.createSocket(net.isIPv6(options.address) ? 'udp6' : 'udp4', onMessage); 
-  socket.bind(options.port || 5060, options.address);
+  socket.bind(port, address);
 
   return {
     open: function(remote, error) {
@@ -563,7 +566,7 @@ function makeUdpTransport(options, callback) {
           var s = stringify(m);
           socket.send(new Buffer(s, 'ascii'), 0, s.length, remote.port, remote.address);          
         },
-        local: {protocol: 'UDP', address: socket.address().address, port: socket.address().port},
+        local: {protocol: 'UDP', address: address, port: port},
         release : function() {}
       }; 
     },
