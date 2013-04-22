@@ -741,7 +741,7 @@ function createInviteServerTransaction(transport, cleanup) {
   var completed = {
     enter: function () {
       g = setTimeout(function retry(t) { 
-        setTimeout(retry, t*2, t*2);
+        g = setTimeout(retry, t*2, t*2);
         transport(rs)
       }, 500, 500);
       h = setTimeout(sm.enter.bind(sm, terminated), 32000);
@@ -757,11 +757,17 @@ function createInviteServerTransaction(transport, cleanup) {
         transport(rs);
     }
   }
-  
-  var confirmed = {enter: function() { setTimeout(sm.enter.bind(sm, terminated), 5000);} };
+ 
+  var timer_i; 
+  var confirmed = {
+    enter: function() { timer_i = setTimeout(sm.enter.bind(sm, terminated), 5000);},
+    leave: function() { clearTimeout(timer_i); }
+  };
 
+  var l;
   var accepted = {
-    enter: function() { setTimeout(sm.enter.bind(sm, terminated), 32000);},
+    enter: function() { l = setTimeout(sm.enter.bind(sm, terminated), 32000);},
+    leave: function() { clearTimeout(l); },
     send: function(m) { 
       rs = m;
       transport(rs);
@@ -772,7 +778,7 @@ function createInviteServerTransaction(transport, cleanup) {
   
   sm.enter(proceeding);
 
-  return {send: sm.signal.bind(sm, 'send'), message: sm.signal.bind(sm,'message')};
+  return {send: sm.signal.bind(sm, 'send'), message: sm.signal.bind(sm,'message'), shutdown: function() { sm.enter(terminated); }};
 }
 
 function createServerTransaction(transport, cleanup) {
@@ -788,14 +794,18 @@ function createServerTransaction(transport, cleanup) {
     }
   }; 
 
+  var j;
   var completed = {
     message: function() { transport(rs); },
-    enter: function() { setTimeout(cleanup, 32000); }
+    enter: function() { j = setTimeout(function() { sm.enter(terminated); }, 32000); },
+    leave: function() { clearTimeout(j); }
   };
+
+  var terminated = {enter: cleanup};
 
   sm.enter(trying);
 
-  return {send: sm.signal.bind(sm, 'send'), message: sm.signal.bind(sm, 'message')};
+  return {send: sm.signal.bind(sm, 'send'), message: sm.signal.bind(sm, 'message'), shutdown: function() { sm.enter(terminated); }};
 }
 
 function createInviteClientTransaction(rq, transport, tu, cleanup, options) {
@@ -857,21 +867,25 @@ function createInviteClientTransaction(rq, transport, tu, cleanup, options) {
     }
   };
 
+  var d;
   var completed = {
     enter: function(rs) {
       ack.headers.to=rs.headers.to;
       transport(ack);
-      setTimeout(sm.enter.bind(sm, terminated), 32000);
+      d = setTimeout(sm.enter.bind(sm, terminated), 32000);
     },
+    leave: function() { clearTimeout(d); },
     message: function(message, remote) {
       if(remote) transport(ack);  // we don't want to ack internally generated messages
     }
   };
 
+  var timer_m;
   var accepted = {
     enter: function() {
-      setTimeout(function() { sm.enter(terminated); }, 32000);
+      timer_m = setTimeout(function() { sm.enter(terminated); }, 32000);
     },
+    leave: function() { clearTimeout(timer_m); },
     message: function(m) {
       if(m.status >= 200 && m.status <= 299)
         tu(m);
@@ -882,7 +896,7 @@ function createInviteClientTransaction(rq, transport, tu, cleanup, options) {
  
   sm.enter(calling);
  
-  return {message: sm.signal.bind(sm, 'message')};
+  return {message: sm.signal.bind(sm, 'message'), shutdown: function() { sm.enter(terminated); }};
 }
 
 function createClientTransaction(rq, transport, tu, cleanup) {  
@@ -927,13 +941,17 @@ function createClientTransaction(rq, transport, tu, cleanup) {
     }
   };
 
-  var completed = {enter: function () { setTimeout(function() { sm.enter(terminated); }, 5000); } };
+  var k;
+  var completed = {
+    enter: function() { k = setTimeout(function() { sm.enter(terminated); }, 5000); },
+    leave: function() { clearTimeout(k); }
+  };
 
   var terminated = {enter: cleanup};
 
   sm.enter(trying);
 
-  return {message: sm.signal.bind(sm, 'message')};
+  return {message: sm.signal.bind(sm, 'message'), shutdown: function() { sm.enter(terminated); }};
 }
 
 function makeTransactionId(m) {
@@ -1039,6 +1057,10 @@ function makeTransactionLayer(options, transport) {
     },
     getClient: function(m) {
       return client_transactions[makeTransactionId(m)];
+    },
+    destroy: function() {
+      Object.keys(client_transactions).forEach(function(x) { client_transactions[x].shutdown(); });
+      Object.keys(server_transactions).forEach(function(x) { server_transactions[x].shutdown(); });
     }
   };
 }
@@ -1113,7 +1135,10 @@ exports.create = function(options, callback) {
         }
       }
     },
-    destroy: transport.destroy.bind(transport)
+    destroy: function() {
+      transaction.destroy();
+      transport.destroy();
+    }
   } 
 }
 
