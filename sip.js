@@ -624,7 +624,9 @@ function makeTransport(options, callback) {
       }
     },
     destroy: function() { 
-      Object.keys(protocols).forEach(function(key) { protocols[key].destroy(); });
+      var protos = protocols;
+      protocols = [];
+      Object.keys(protos).forEach(function(key) { protos[key].destroy(); });
     },
   };
 }
