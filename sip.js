@@ -1114,7 +1114,7 @@ exports.create = function(options, callback) {
           
           resolve(getNextHop(m), function(address) {
             if(address.length === 0) {
-              errorLog(new Error("ACK: couldn't resove" + stringifyUri(m.uri)));
+              errorLog(new Error("ACK: couldn't resolve " + stringifyUri(m.uri)));
               return;
             }
           
