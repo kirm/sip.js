@@ -211,6 +211,15 @@ function stringifyVersion(v) {
   return v || '2.0';
 }
 
+function stringifyParams(params) {
+  var s = '';
+  for(var n in params) {
+      s += ';'+n+(params[n]?'='+params[n]:'');
+  }
+
+  return s;
+}
+
 function stringifyUri(uri) {
   if(typeof uri === 'string')
     return uri;
@@ -230,7 +239,7 @@ function stringifyUri(uri) {
     s += ':' + uri.port;
 
   if(uri.params)
-    s += Object.keys(uri.params).map(function(x){return ';'+x+(uri.params[x] ? '='+uri.params[x] : '');}).join('');
+    s += stringifyParams(uri.params);
 
   if(uri.headers) {
     var h = Object.keys(uri.headers).map(function(x){return x+'='+uri.headers[x];}).join('&');
@@ -241,15 +250,6 @@ function stringifyUri(uri) {
 }
 
 exports.stringifyUri = stringifyUri;
-
-function stringifyParams(params) {
-  var s = '';
-  for(var n in params) {
-      s += ';'+n+(params[n]?'='+params[n]:'');
-  }
-
-  return s;
-}
 
 function stringifyAOR(aor) {
   return (aor.name || '') + ' <' + stringifyUri(aor.uri) + '>'+stringifyParams(aor.params); 
