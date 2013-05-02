@@ -1,5 +1,5 @@
-sip = require 'sip'
-digest = require 'sip/digest'
+sip = require '../sip'
+digest = require '../digest'
 assert = require 'assert'
 util = require 'util'
 

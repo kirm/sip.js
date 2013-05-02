@@ -1,4 +1,4 @@
-sip = require('sip')
+sip = require('../sip')
 udp = require('dgram')
 assert = require('assert')
 util = require('util')
