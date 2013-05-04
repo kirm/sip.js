@@ -633,13 +633,37 @@ function makeTransport(options, callback) {
 
 exports.makeTransport = makeTransport;
 
+function makeWellBehavingResolver(resolve) {
+  var outstanding = Object.create(null);
+  
+  return function(name, cb) {
+    if(outstanding[name]) {
+      outstanding[name].push(cb);
+    }
+    else {
+      outstanding[name] = [cb];
+      
+      resolve(name, function() {
+        var o = outstanding[name];
+        delete outstanding[name];
+        var args = arguments;
+        o.forEach(function(x) { x.apply(null, args); });
+      });
+    }
+  };
+};
+
+var resolveSrv = makeWellBehavingResolver(dns.resolveSrv);
+var resolve4 = makeWellBehavingResolver(dns.resolve4);
+var resolve6 = makeWellBehavingResolver(dns.resolve6);
+
 function resolve(uri, action) {
   if(net.isIP(uri.host))
     return action([{protocol: uri.params.transport || 'UDP', address: uri.host, port: uri.port || 5060}]);
 
   function resolve46(host, cb) {
-    dns.resolve4(host, function(e4, a4) {
-      dns.resolve6(host, function(e6, a6) {
+    resolve4(host, function(e4, a4) {
+      resolve6(host, function(e6, a6) {
         if((a4 || a6) && (a4 || a6).length)
           cb(null, a4.concat(a6));
         else
@@ -664,7 +688,7 @@ function resolve(uri, action) {
     var addresses = [];
 
     protocols.forEach(function(proto) {
-      dns.resolveSrv('_sip._'+proto+'.'+uri.host, function(e, r) {
+      resolveSrv('_sip._'+proto+'.'+uri.host, function(e, r) {
         --n;
         if(Array.isArray(r)) {
           n += r.length;
