@@ -593,7 +593,7 @@ function makeTransport(options, callback) {
   function wrap(obj, target) {
     return Object.create(obj, {send: {value: function(m) {
       if(m.method) {
-        m.headers.via[0].host = this.local.address;
+        m.headers.via[0].host = options.publicAddress || this.local.address;
         m.headers.via[0].port = options.port || 5060;
         m.headers.via[0].protocol = this.local.protocol;
 
