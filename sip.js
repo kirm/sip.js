@@ -703,7 +703,7 @@ function resolve(uri, action) {
           });
         }
         else if(0 === n) {
-          if(addresess.length) {
+          if(addresses.length) {
             action(addresses);
           }
           else {
