@@ -690,6 +690,7 @@ function resolve(uri, action) {
     protocols.forEach(function(proto) {
       resolveSrv('_sip._'+proto+'.'+uri.host, function(e, r) {
         --n;
+        
         if(Array.isArray(r)) {
           n += r.length;
           r.forEach(function(srv) {
@@ -702,12 +703,17 @@ function resolve(uri, action) {
           });
         }
         else if(0 === n) {
-          // all srv requests failed
-          resolve46(uri.host, function(err, address) {
-            address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
-              .reduce(function(arr,v) { return arr.concat(v); }, []);
-            action(address);
-          });
+          if(addresses.length) {
+            action(addresses);
+          }
+          else {
+            // all srv requests failed
+            resolve46(uri.host, function(err, address) {
+              address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || 5060};});})
+                .reduce(function(arr,v) { return arr.concat(v); }, []);
+              action(address);
+            });
+          }
         }
       })
     });
