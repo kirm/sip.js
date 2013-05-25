@@ -665,7 +665,7 @@ function resolve(uri, action) {
     resolve4(host, function(e4, a4) {
       resolve6(host, function(e6, a6) {
         if((a4 || a6) && (a4 || a6).length)
-          cb(null, a4.concat(a6));
+          cb(null, (a4 || []).concat(a6 || []));
         else
           cb(e4 || e6, []);
       });
@@ -703,6 +703,7 @@ function resolve(uri, action) {
           });
         }
         else if(0 === n) {
+          console.log(e);
           if(addresses.length) {
             action(addresses);
           }
