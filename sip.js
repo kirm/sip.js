@@ -703,7 +703,6 @@ function resolve(uri, action) {
           });
         }
         else if(0 === n) {
-          console.log(e);
           if(addresses.length) {
             action(addresses);
           }
