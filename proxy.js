@@ -82,7 +82,7 @@ function onRequest(rq, route, remote) {
 
 
 exports.start = function(options, route) {
-  sip.start(options, function(rq) {
+  sip.start(options, function(rq, remote) {
     if(rq.method === 'CANCEL') {
       var ctx = contexts[makeContextId(rq)];
 
@@ -99,7 +99,7 @@ exports.start = function(options, route) {
       }
     }
     else {
-      onRequest(rq, route);
+      onRequest(rq, route, remote);
     }
   });
 };
