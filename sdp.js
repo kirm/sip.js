@@ -75,7 +75,7 @@ var stringifiers = {
     return [c.nettype || 'IN', c.addrtype || 'IP4', c.address].join(' ');
   },
   m: function(m) {
-    return [m.media || 'audio', m.port, m.transport || 'RTP/AVP', m.fmt.join(' ')].join(' ');
+    return [m.media || 'audio', m.port, m.proto || 'RTP/AVP', m.fmt.join(' ')].join(' ');
   }
 };
 
