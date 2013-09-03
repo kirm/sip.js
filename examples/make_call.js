@@ -93,7 +93,7 @@ function(rs) {
           sip.send(sip.makeResponse(rq, 200, 'Ok'));
         }
         else {
-          sip.send(sip.makeRespinse(rq, 405, 'Method not allowed'));
+          sip.send(sip.makeResponse(rq, 405, 'Method not allowed'));
         }
       }
     }
