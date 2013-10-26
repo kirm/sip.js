@@ -110,7 +110,8 @@ Starts SIP protocol.
   `tls.connect` node.js APIs. See [description in node.js API documentation](http://nodejs.org/api/tls.html#tls_tls_createserver_options_secureconnectionlistener).
   If `tls' is ommited TLS transport will be disabled.
 * `tls_port` - port for TLS transport to listen on. 5061 by default.
-   
+* `publicAddress`, `hostname` - address and hostname to be used within sip.js generated local uris and via headers. Sip.js will use `options.publicAddress` when
+  it's defined, then fallback to `options.hostname` and the fallback to value returned by node.js `os.hostname()` API.
 
 `onRequest` - callback to be called on new request arrival. It is expected to be a function of two arguments
 `function (request, remote) {}`. First argument `request` is a received request. Second argument `remote` is an object containing
