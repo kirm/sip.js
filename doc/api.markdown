@@ -6,7 +6,7 @@ sip.js is a simple SIP protocol implementation.
 It features:
 
 * SIP Message Parser
-* UDP and TCP based transport
+* UDP, TCP and TLS based transport
 * Transactions
 * Digest Authentication
 
@@ -106,6 +106,11 @@ Starts SIP protocol.
 * `address` - interface address to be listen on. By default sip.js listens on all interfaces.
 * `udp` - enables UDP transport. Enabled by default.
 * `tcp` - enables TCP transport. Enabled by default.
+* `tls` - options object for tls transport. It will be passed as options parameter to `tls.createServer` and
+  `tls.connect` node.js APIs. See [description in node.js API documentation](http://nodejs.org/api/tls.html#tls_tls_createserver_options_secureconnectionlistener).
+  If `tls' is ommited TLS transport will be disabled.
+* `tls_port` - port for TLS transport to listen on. 5061 by default.
+   
 
 `onRequest` - callback to be called on new request arrival. It is expected to be a function of two arguments
 `function (request, remote) {}`. First argument `request` is a received request. Second argument `remote` is an object containing
