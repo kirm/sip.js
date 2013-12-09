@@ -80,7 +80,7 @@ function parseGenericHeader(d, h) {
 function parseAOR(data) {
   var r = applyRegex(/((?:[\w\-.!%*_+`'~]+)(?:\s+[\w\-.!%*_+`'~]+)*|"[^"\\]*(?:\\.[^"\\]*)*")?\s*\<\s*([^>]*)\s*\>|((?:[^\s@"<]@)?[^\s;]+)/g, data);
 
-  return parseParams(data, {name: r[1], uri: r[2] || r[3]});
+  return parseParams(data, {name: r[1], uri: r[2] || r[3] || ''});
 }
 exports.parseAOR = parseAOR;
 
@@ -550,7 +550,8 @@ function makeTcpTransport(options, callback) {
 function makeUdpTransport(options, callback) {
   function onMessage(data, rinfo) {
     var msg = parseMessage(data);
-    
+   
+    console.log('message'); 
     if(msg && checkMessage(msg)) {
       if(msg.method) {
         msg.headers.via[0].params.received = rinfo.address;
