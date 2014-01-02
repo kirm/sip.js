@@ -462,31 +462,44 @@ function checkMessage(msg) {
 }
 
 function makeStreamTransport(protocol, connect, createServer, callback) {
-  var connections = Object.create(null);
+  var remotes = Object.create(null);
+  var flows = Object.create(null);
 
   function init(stream, remote) {
-    var id = [remote.address, remote.port].join(),
+    var remoteid = [remote.address, remote.port].join(),
+      flowid = undefined,
       refs = 0;
 
     stream.setEncoding('ascii');
     stream.on('data', makeStreamParser(function(m) {
       if(checkMessage(m)) {
         if(m.method) m.headers.via[0].params.received = remote.address;
-        callback(m, remote, stream);
+        callback(m,
+          {protocol: remote.protocol, address: stream.remoteAddress, port: stream.remotePort, local: { address: stream.localAddress, port: stream.localPort}},
+          stream);
       }
     }));
   
-    stream.on('close',    function() { delete connections[id]; });
+    stream.on('close',    function() {
+      if(flowid) delete flows[id]; 
+      delete connections[id];
+    });
+    stream.on('connect', function() {
+      flowid = [remoteid,stream.localAddress, stream.localPort].join();
+      flows[flowid] = remotes[remoteid];
+    });
+
     stream.on('error',    function() {});
     stream.on('end',      function() { 
       if(refs !== 0) stream.emit('error', new Error('remote peer disconnected'));
       stream.end();
     });
+
     stream.on('timeout',  function() { if(refs === 0) stream.end(); });
     stream.setTimeout(120000);   
     stream.setMaxListeners(10000);
  
-    connections[id] = function(onError) {
+    remote[remoteid] = function(onError) {
       ++refs;
       if(onError) stream.on('error', onError);
 
@@ -518,6 +531,12 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
       if(dontopen) return null;
 
       return init(connect(remote.port, remote.address), remote)(error);
+    },
+    get: function(address, error) {
+      var c = address.local ? flows[[address.address, address.port, address.local.address, address.local.port].join()]
+        : remotes[[address.address, address.port].join()];
+
+      return c && c(error);
     },
     destroy: function() { server.close(); }
   };
@@ -559,27 +578,30 @@ function makeUdpTransport(options, callback) {
           msg.headers.via[0].params.rport = rinfo.port;
       }
 
-      callback(msg, {protocol: 'UDP', address: rinfo.address, port: rinfo.port});
+      callback(msg, {protocol: 'UDP', address: rinfo.address, port: rinfo.port, local: {address: address, port: port}});
     }
   }
 
   var address = options.address || '0.0.0.0';
   var port = options.port || 5060;
 
-  var socket = dgram.createSocket(net.isIPv6(options.address) ? 'udp6' : 'udp4', onMessage); 
+  var socket = dgram.createSocket(net.isIPv6(address) ? 'udp6' : 'udp4', onMessage); 
   socket.bind(port, address);
 
+  function open(remote, error) {
+    return {
+      send: function(m) {
+        var s = stringify(m);
+        socket.send(new Buffer(s, 'ascii'), 0, s.length, remote.port, remote.address);          
+      },
+      protocol: 'UDP',
+      release : function() {}
+    }; 
+  };
+  
   return {
-    open: function(remote, error) {
-      return {
-        send: function(m) {
-          var s = stringify(m);
-          socket.send(new Buffer(s, 'ascii'), 0, s.length, remote.port, remote.address);          
-        },
-        protocol: 'UDP',
-        release : function() {}
-      }; 
-    },
+    open: open,
+    get: open,
     destroy: function() { socket.close(); }
   }
 }
@@ -621,6 +643,9 @@ function makeTransport(options, callback) {
   return {
     open: function(target, error) {
       return wrap(protocols[target.protocol.toUpperCase()].open(target, error), target);
+    },
+    get: function(target, error) {
+      return wrap(protocols[target.protocol.toUpperCase()].get(target, error), target);
     },
     send: function(target, message) {
       var cn = this.open(target);
