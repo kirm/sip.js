@@ -570,7 +570,6 @@ function makeUdpTransport(options, callback) {
   function onMessage(data, rinfo) {
     var msg = parseMessage(data);
    
-    console.log('message'); 
     if(msg && checkMessage(msg)) {
       if(msg.method) {
         msg.headers.via[0].params.received = rinfo.address;
@@ -1053,13 +1052,9 @@ function makeTransactionLayer(options, transport) {
   var client_transactions = Object.create(null);
 
   return {
-    createServerTransaction: function(rq, remote) {
+    createServerTransaction: function(rq, cn) {
       var id = makeTransactionId(rq);
       
-      if(remote.protocol === 'UDP' && !rq.headers.via[0].params.hasOwnProperty('rport'))
-        remote = {protocol: 'UDP', port: rq.headers.via[0].port || 5060, address: remote.address};
-
-      var cn = transport(remote, function() {}, true);
       return server_transactions[id] = (rq.method === 'INVITE' ? createInviteServerTransaction : createServerTransaction)(
         cn.send.bind(cn),
         function() { 
@@ -1067,60 +1062,23 @@ function makeTransactionLayer(options, transport) {
           cn.release();
         });
     },
-    createClientTransaction: function(rq, callback) {
-      if(rq.method !== 'CANCEL') {
-        if(rq.headers.via)
-          rq.headers.via.unshift({params:{}});
-        else
-          rq.headers.via = [{params:{}}];
-      }
+    createClientTransaction: function(connection, rq, callback) {
+      if(rq.method !== 'CANCEL') rq.headers.via[0].params.branch = generateBranch();
+      
       
       if(typeof rq.headers.cseq !== 'object')
         rq.headers.cseq = parseCSeq({s: rq.headers.cseq, i:0});
 
-      var transaction = rq.method === 'INVITE' ? createInviteClientTransaction : createClientTransaction;
-
-      resolve(getNextHop(rq), function(address) {
-        var onresponse;
-
-        function next() {
-          onresponse = searching;
-          if(address.length > 0) {
-            try {
-              if(rq.method !== 'CANCEL')
-                rq.headers.via[0].params.branch = generateBranch();
- 
-              var id = makeTransactionId(rq);
-
-              var cn = transport(address.shift(), function(e) { client_transactions[id].message(makeResponse(rq, 503));}); 
-              var send = cn.send.bind(cn);
-              send.reliable = cn.protocol.toUpperCase() !== 'UDP';
-
-              client_transactions[id] = transaction(rq, send, onresponse, function() { 
-                  delete client_transactions[id];
-                  cn.release();
-                }, 
-                options);
-            }
-            catch(e) {
-              onresponse(makeResponse(rq, 503));  
-            }
-          }
-          else
-            onresponse(makeResponse(rq, 404));
-        }
-
-        function searching(rs) {
-          if(rs.status === 503)
-            return next();
-          else if(rs.status > 100)
-            onresponse = callback;
-          
-          callback(rs);
-        }
-        
-        next();
-      });
+      var send = connection.send.bind(connection);
+      send.reliable = connection.protocol.toUpperCase() !== 'UDP';
+      
+      var id = makeTransactionId(rq);
+      return client_transactions[id] = 
+        (rq.method === 'INVITE' ? createInviteClientTransaction : createClientTransaction)(rq, send, callback, function() { 
+          delete client_transactions[id];
+          connection.release();
+        }, 
+        options);
     },
     getServer: function(m) {
       return server_transactions[makeTransactionId(m)];
@@ -1137,6 +1095,41 @@ function makeTransactionLayer(options, transport) {
 
 exports.makeTransactionLayer = makeTransactionLayer;
 
+function sequentialSearch(transaction, connect, addresses, rq, callback) {
+  if(rq.method !== 'CANCEL') {
+    if(!rq.headers.via) rq.headers.via = [];
+    rq.headers.via.unshift({params:{}});
+  }
+
+  var onresponse;
+  function next() {
+    onresponse = searching;
+    
+    if(addresses.length > 0) {
+      try {
+        var client = transaction(connect(addresses.shift(), function() { client.message(makeResponse(rq, 503));}), rq, 
+          function() { onresponse.apply(null, arguments); }); 
+      }
+      catch(e) {
+        onresponse(makeResponse(rq, 503));  
+      }
+    }
+    else
+      onresponse(makeResponse(rq, 404));
+  }
+
+  function searching(rs) {
+    if(rs.status === 503)
+      return next();
+    else if(rs.status > 100)
+      onresponse = callback;
+    
+    callback(rs);
+  }
+  
+  next();
+}
+
 exports.create = function(options, callback) {
   var errorLog = (options.logger && options.logger.error) || function() {};
 
@@ -1146,7 +1139,7 @@ exports.create = function(options, callback) {
 
       if(!t) {
         if(m.method && m.method !== 'ACK') {
-          var t = transaction.createServerTransaction(m,remote);
+          var t = transaction.createServerTransaction(m, transport.get(remote));
           try {
             callback(m,remote);
           } catch(e) {
@@ -1176,19 +1169,14 @@ exports.create = function(options, callback) {
         t && t.send && t.send(m);
       }
       else {
-        if(m.method === 'ACK') {
-          if(m.headers.via === undefined)
-            m.headers.via = [];
-
-          m.headers.via.unshift({params: {branch: generateBranch()}});
-          
-          resolve(getNextHop(m), function(address) {
-            if(address.length === 0) {
+        resolve(getNextHop(m), function(addresses) {
+          if(m.method === 'ACK') {
+            if(addresses.length === 0) {
               errorLog(new Error("ACK: couldn't resolve " + stringifyUri(m.uri)));
               return;
             }
-          
-            var cn = transport.open(address[0], errorLog);
+
+            var cn = transport.open(addresses[0], errorLog);
             try {
               cn.send(m);
             } 
@@ -1198,11 +1186,10 @@ exports.create = function(options, callback) {
             finally {
               cn.release();
             }
-          });
-        }
-        else {
-          return transaction.createClientTransaction(m, callback || function() {});
-        }
+          }
+          else
+            sequentialSearch(transaction.createClientTransaction.bind(transaction), transport.open.bind(transport), addresses, m, callback || function() {}); 
+        });
       }
     },
     destroy: function() {
