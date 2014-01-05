@@ -143,6 +143,7 @@ var parsers = {
   },
   'route': parseMultiHeader.bind(0, parseAOR),
   'record-route': parseMultiHeader.bind(0, parseAOR),
+  'path': parseMultiHeader.bind(0, parseAOR),
   'cseq': parseCSeq,
   'content-length': function(v) { return +v.s; },
   'via': parseMultiHeader.bind(0, parseVia),
@@ -291,6 +292,9 @@ var stringifiers = {
   },
   'record-route': function(h) {
     return h.length ? 'Record-Route: ' + h.map(stringifyAOR).join(', ') + '\r\n' : '';
+  },
+  'path': function(h) { 
+    return h.length ? 'Path: ' + h.map(stringifyAOR).join(', ') + '\r\n' : '';
   },
   cseq: function(cseq) { 
     return 'CSeq: '+cseq.seq+' '+cseq.method+'\r\n';
