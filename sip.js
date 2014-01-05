@@ -5,6 +5,7 @@ var assert = require('assert');
 var dgram = require('dgram');
 var tls = require('tls');
 var os = require('os');
+var crypto = require('crypto');
 
 function debug(e) {
   if(e.stack) {
@@ -14,6 +15,19 @@ function debug(e) {
     util.debug(util.inspect(e));
 }
 
+function toBase64(s) { 
+  switch(s.length % 3) {
+  case 1:
+    s += '  ';
+    break;
+  case 2:
+    s += ' ';
+    break;
+  default:
+  }
+
+  return (new Buffer(s)).toString('base64').replace(/\//g, '_').replace(/\+/g, '-');
+}
 // Actual stack code begins here
 
 function parseResponse(rs, m) {
@@ -1033,24 +1047,6 @@ function makeTransactionId(m) {
   return [m.headers.cseq.method, m.headers['call-id'], m.headers.via[0].params.branch].join();
 }
 
-function getNextHop(rq) {
-  var hop = parseUri(rq.uri);
-
-  if(rq.headers.route) {
-    if(typeof rq.headers.route === 'string')
-      rq.headers.route = parsers.route({s: rq.headers.route, i:0});
-
-    hop = parseUri(rq.headers.route[0].uri);
-    if(hop.params.lr === undefined ) {
-      rq.headers.route.shift();
-      rq.headers.route.push({uri: rq.uri});
-      rq.uri = hop;
-    }
-  }
-
-  return hop;
-}
- 
 function makeTransactionLayer(options, transport) {
   var server_transactions = Object.create(null);
   var client_transactions = Object.create(null);
@@ -1165,7 +1161,25 @@ exports.create = function(options, callback) {
   });
   
   var transaction = makeTransactionLayer(options, transport.open.bind(transport));
+  var hostname = options.publicAddress || options.address || options.hostname || os.hostname();
+  var rbytes = crypto.randomBytes(20);
 
+  function encodeFlowToken(flow) {
+    var s = [flow.protocol, flow.address, flow.port, flow.local.address, flow.local.port].join();
+    var h = crypto.createHmac('sha1', rbytes);
+    h.update(s);
+    return toBase64([h.digest('base64'), s].join());
+  }
+
+  function decodeFlowToken(token) {
+    var s = (new Buffer(token, 'base64')).toString('ascii').split(',');
+    if(s.length != 6) return;
+
+    var flow = {protocol: s[1], address: s[2], port: +s[3], local: {address: s[4], port: +s[5]}};
+
+    return encodeFlowToken(flow) == token ? flow : undefined;
+  }       
+  
   return {
     send: function(m, callback) {
       if(m.method === undefined) {
@@ -1173,7 +1187,31 @@ exports.create = function(options, callback) {
         t && t.send && t.send(m);
       }
       else {
-        resolve(getNextHop(m), function(addresses) {
+        var hop = parseUri(m.uri);
+
+        if(typeof m.headers.route === 'string')
+          rq.headers.route = parsers.route({s: m.headers.route, i:0});
+ 
+        if(m.headers.route && m.headers.route.length > 0) {
+          hop = parseUri(m.headers.route[0].uri);
+          if(hop.host === hostname) {
+            m.headers.route.shift();
+          } 
+          else if(hop.params.lr === undefined ) {
+            m.headers.route.shift();
+            m.headers.route.push({uri: rq.uri});
+            m.uri = hop;
+          }
+        }
+
+        (function(callback) {
+          if(hop.host === hostname) {
+            var flow = decodeFlowToken(hop.user);
+            callback(flow ? [flow] : []);
+          }
+          else
+            resolve(hop, callback);
+        })(function(addresses) {
           if(m.method === 'ACK') {
             if(addresses.length === 0) {
               errorLog(new Error("ACK: couldn't resolve " + stringifyUri(m.uri)));
@@ -1196,6 +1234,16 @@ exports.create = function(options, callback) {
         });
       }
     },
+    encodeFlowUri: function(flow) {
+      return {schema: flow.protocol === 'TLS' ? 'sips' : 'sip', user: encodeFlowToken(flow), host: hostname, params:{}};
+    },
+    decodeFlowUri: function(uri) {
+      uri = parseUri(uri);
+      return uri.host === hostname ? decodeFlowToken(uri.user) : undefined;
+    },
+    isFlowUri: function(uri) {
+      return !!!decodeFlowUri(uri);
+    },
     destroy: function() {
       transaction.destroy();
       transport.destroy();
@@ -1208,5 +1256,8 @@ exports.start = function(options, callback) {
 
   exports.send = r.send;
   exports.stop = r.destroy;
+  exports.encodeFlowUri = r.encodeFlowUri;
+  exports.decodeFlowUri = r.decodeFlowUri;
+  exports.isFlowUri = r.isFlowUri;
 }
 
