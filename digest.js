@@ -84,7 +84,7 @@ function numberTo8Hex(n) {
 
 function findDigestRealm(headers, realm) {
   if(!realm) return headers && headers[0];
-  return headers && headers.filter(function(x) { return x.scheme === 'Digest' && unq(x.realm) === realm; })[0];
+  return headers && headers.filter(function(x) { return x.scheme.toLowerCase() === 'digest' && unq(x.realm) === realm; })[0];
 }
 
 function selectQop(challenge, preference) {
