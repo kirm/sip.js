@@ -365,8 +365,8 @@ function stringify(m) {
 
 exports.stringify = stringify;
 
-function makeResponse(rq, status, reason) {
-  return {
+function makeResponse(rq, status, reason, extension) {
+  var rs = {
     status: status,
     reason: reason || '',
     version: rq.version,
@@ -378,6 +378,13 @@ function makeResponse(rq, status, reason) {
       cseq: rq.headers.cseq
     }
   };
+
+  if(extension) {
+    if(extension.headers) Object.keys(extension.headers).forEach(function(h) { rs.headers[h] = extension.headers[h]; });
+    rs.content = extension.content;
+  }
+
+  return rs;
 }
 
 exports.makeResponse = makeResponse;
