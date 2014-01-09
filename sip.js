@@ -7,6 +7,12 @@ var tls = require('tls');
 var os = require('os');
 var crypto = require('crypto');
 
+try {
+var WebSocket = require('ws');
+}
+catch(e) {
+}
+
 function debug(e) {
   if(e.stack) {
     util.debug(e + '\n' + e.stack);
@@ -584,6 +590,48 @@ function makeTcpTransport(options, callback) {
     callback);
 }
 
+function makeWsTransport(options, callback) {
+  var flows = Object.create(null);
+
+  var server = new WebSocket.Server({port:options.ws_port});
+  server.on('connection', function(ws) {
+    var remote = {address: ws._socket.remoteAddress, port: ws._socket.remotePort},
+        local = {address: ws._socket.address().address, port: ws._socket.address().port}
+        flowid = [remote.address, remote.port, local.address, local.port].join();
+
+    flows[flowid] = ws;
+
+    ws.on('close', function() { delete flows[flowid]; });
+    ws.on('message', function(data) {
+      var msg = parseMessage(data);
+      if(msg) {
+        callback(msg, {protocol: 'WS', address: remote.address, port: remote.port, local: local});
+      }
+    });
+  });
+
+  function get(flow, error) {
+    var ws = flows[[flow.address, flow.port, flow.local.address, flow.local.port].join()];
+    if(ws) {
+      return {
+        send: function(m) {
+          ws.send(stringify(m));    
+        },
+        release: function() {},
+        local: { protocol: 'WS', address: ws._socket.address().address, port: ws._socket.address().port },
+        protocol: 'WS'
+      };
+    }
+  }
+
+  return {
+    get: get,
+    open: get,
+    destroy: function() { server.close(); }
+  }
+}
+
+
 function makeUdpTransport(options, callback) {
   function onMessage(data, rinfo) {
     var msg = parseMessage(data);
@@ -640,6 +688,8 @@ function makeTransport(options, callback) {
     protocols.TCP = makeTcpTransport(options, callbackAndLog);
   if(options.tls)
     protocols.TLS = makeTlsTransport(options, callbackAndLog);
+  if(options.ws_port && WebSocket)
+    protocols.WS = makeWsTransport(options, callbackAndLog);
 
   function wrap(obj, target) {
     return Object.create(obj, {send: {value: function(m) {
@@ -1244,6 +1294,7 @@ exports.create = function(options, callback) {
     isFlowUri: function(uri) {
       return !!!decodeFlowUri(uri);
     },
+    hostname: function() { return hostname; },
     destroy: function() {
       transaction.destroy();
       transport.destroy();
@@ -1259,5 +1310,6 @@ exports.start = function(options, callback) {
   exports.encodeFlowUri = r.encodeFlowUri;
   exports.decodeFlowUri = r.decodeFlowUri;
   exports.isFlowUri = r.isFlowUri;
+  exports.hostname = r.hostname;
 }
 
