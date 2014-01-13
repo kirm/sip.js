@@ -35,7 +35,7 @@ function forwardResponse(ctx, rs, callback) {
 }
 
 
-function sendCancel(rq, via) {
+function sendCancel(rq, via, route) {
   sip.send({
     method: 'CANCEL',
     uri: rq.uri,
@@ -44,6 +44,7 @@ function sendCancel(rq, via) {
       to: rq.headers.to,
       from: rq.headers.from,
       'call-id': rq.headers['call-id'],
+      route: route,
       cseq: {method: 'CANCEL', seq: rq.headers.cseq.seq}
     }
   });
@@ -51,13 +52,14 @@ function sendCancel(rq, via) {
 
 
 function forwardRequest(ctx, rq, callback) {
+  var route = rq.headers.route && rq.headers.route.slice();
   sip.send(rq, function(rs, remote) {
     if(+rs.status < 200) {
       var via = rs.headers.via[0];
-      ctx.cancellers[rs.headers.via[0].params.branch] = function() { sendCancel(rq, via); };
+      ctx.cancellers[rs.headers.via[0].params.branch] = function() { sendCancel(rq, via, route); };
 
       if(ctx.cancelled)
-        sendCancel(rq, via);
+        sendCancel(rq, via, route);
     }
     else {
       delete ctx.cancellers[rs.headers.via[0].params.branch];
