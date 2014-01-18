@@ -104,6 +104,12 @@ function parseAOR(data) {
 }
 exports.parseAOR = parseAOR;
 
+function parseAorWithUri(data) {
+  var r = parseAOR(data);
+  r.uri = parseUri(r.uri);
+  return r;
+}
+
 function parseVia(data) {
   var r = applyRegex(/SIP\s*\/\s*(\d+\.\d+)\s*\/\s*([\S]+)\s+([^\s;:]+)(?:\s*:\s*(\d+))?/g, data);
   return parseParams(data, {version: r[1], protocol: r[2], host: r[3], port: r[4] && +r[4]});
@@ -161,9 +167,9 @@ var parsers = {
     else
       return parseMultiHeader(parseAOR, v, h);
   },
-  'route': parseMultiHeader.bind(0, parseAOR),
-  'record-route': parseMultiHeader.bind(0, parseAOR),
-  'path': parseMultiHeader.bind(0, parseAOR),
+  'route': parseMultiHeader.bind(0, parseAorWithUri),
+  'record-route': parseMultiHeader.bind(0, parseAorWithUri),
+  'path': parseMultiHeader.bind(0, parseAorWithUri),
   'cseq': parseCSeq,
   'content-length': function(v) { return +v.s; },
   'via': parseMultiHeader.bind(0, parseVia),
