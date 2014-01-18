@@ -1170,11 +1170,12 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
     
     if(addresses.length > 0) {
       try {
-        var client = transaction(connect(addresses.shift(), function() { client.message(makeResponse(rq, 503));}), rq, 
+        var address = addresses.shift();
+        var client = transaction(connect(address, function() { client.message(makeResponse(rq, 503));}), rq, 
           function() { onresponse.apply(null, arguments); }); 
       }
       catch(e) {
-        onresponse(makeResponse(rq, 503));  
+        onresponse(address.local ? makeResponse(rq, 430) : makeResponse(rq, 503));  
       }
     }
     else
