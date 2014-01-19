@@ -605,9 +605,10 @@ function makeTcpTransport(options, callback) {
 
 function makeWsTransport(options, callback) {
   var flows = Object.create(null);
+  var clients = Object.create(null);
 
-  var server = new WebSocket.Server({port:options.ws_port});
-  server.on('connection', function(ws) {
+  
+  function init(ws) {
     var remote = {address: ws._socket.remoteAddress, port: ws._socket.remotePort},
         local = {address: ws._socket.address().address, port: ws._socket.address().port}
         flowid = [remote.address, remote.port, local.address, local.port].join();
@@ -621,29 +622,70 @@ function makeWsTransport(options, callback) {
         callback(msg, {protocol: 'WS', address: remote.address, port: remote.port, local: local});
       }
     });
-  });
+  }
 
-  function get(flow, error) {
+  function makeClient(uri) {
+    if(clients[uri]) return clients[uri]();
+
+    var socket = new WebSocket(uri),
+        queue = [],
+        refs = 0;
+    
+    function send_connecting(m) { queue.push(stringify(m)); }
+    function send_open(m) { socket.send(typeof m === 'string' ? m : stringify(m)); }
+    var send = send_connecting;
+
+    socket.on('open', function() { 
+      init(socket); 
+      send = send_open;
+      queue.splice(0).forEach(send);
+    });
+
+    function open(onError) {
+      ++refs;
+      if(onError) socket.on('error', onError);
+      return {
+        send: function(m) { send(m); },
+        release: function() {
+          if(onError) socket.removeListener('error', onError);
+          if(--refs === 0) socket.terminate();
+        },
+        protocol: 'WS'
+      };
+    };
+
+    return clients[uri] = open;
+  }
+
+  if(options.ws_port) {
+    var server = new WebSocket.Server({port:options.ws_port});
+    server.on('connection',init);
+  }
+
+  function get(flow) {
     var ws = flows[[flow.address, flow.port, flow.local.address, flow.local.port].join()];
     if(ws) {
       return {
-        send: function(m) {
-          ws.send(stringify(m));    
-        },
+        send: function(m) { ws.send(stringify(m)); },
         release: function() {},
-        local: { protocol: 'WS', address: ws._socket.address().address, port: ws._socket.address().port },
         protocol: 'WS'
       };
     }
   }
 
+  function open(target, onError) {
+    if(target.local)
+      return get(target); 
+    else
+      return makeClient('ws://'+target.host+':'+target.port)(onError);
+  }
+
   return {
-    get: get,
-    open: get,
+    get: open,
+    open: open,
     destroy: function() { server.close(); }
   }
 }
-
 
 function makeUdpTransport(options, callback) {
   function onMessage(data, rinfo) {
@@ -771,6 +813,9 @@ var resolve4 = makeWellBehavingResolver(dns.resolve4);
 var resolve6 = makeWellBehavingResolver(dns.resolve6);
 
 function resolve(uri, action) {
+  if(uri.params.transport === 'ws')
+    return action([{protocol: uri.schema === 'sips' ? 'WSS' : 'WS', host: uri.host, port: uri.port || (uri.schema === 'sips' ? 433 : 80)}]);
+
   if(net.isIP(uri.host)) {
     var protocol = uri.params.transport || 'UDP';
     return action([{protocol: protocol, address: uri.host, port: uri.port || defaultPort(protocol)}]);
@@ -1190,7 +1235,7 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
     
     callback(rs);
   }
-  
+ 
   next();
 }
 
