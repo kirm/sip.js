@@ -507,6 +507,11 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
       flowid = undefined,
       refs = 0;
 
+    function register_flow() {
+      flowid = [remoteid,stream.localAddress, stream.localPort].join();
+      flows[flowid] = remotes[remoteid];
+    }
+
     stream.setEncoding('ascii');
     stream.on('data', makeStreamParser(function(m) {
       if(checkMessage(m)) {
@@ -518,13 +523,10 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
     }));
   
     stream.on('close',    function() {
-      if(flowid) delete flows[id]; 
-      delete connections[id];
+      if(flowid) delete flows[flowid]; 
+      delete remotes[remoteid];
     });
-    stream.on('connect', function() {
-      flowid = [remoteid,stream.localAddress, stream.localPort].join();
-      flows[flowid] = remotes[remoteid];
-    });
+    stream.on('connect',  register_flow);
 
     stream.on('error',    function() {});
     stream.on('end',      function() { 
@@ -536,7 +538,7 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
     stream.setTimeout(120000);   
     stream.setMaxListeners(10000);
  
-    remote[remoteid] = function(onError) {
+    remotes[remoteid] = function(onError) {
       ++refs;
       if(onError) stream.on('error', onError);
 
@@ -552,7 +554,9 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
       }
     };
 
-    return connections[id];
+    if(stream.localPort) register_flow();
+
+    return remotes[remoteid];
   }
 
   var server = createServer(function(stream) {
@@ -560,12 +564,10 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
   });
 
   return {
-    open: function(remote, error, dontopen) {
-      var id = [remote.address, remote.port].join();
+    open: function(remote, error) {
+      var remoteid = [remote.address, remote.port].join();
 
-      if(id in connections) return connections[id](error);
-
-      if(dontopen) return null;
+      if(remoteid in remotes) return remotes[remoteid](error);
 
       return init(connect(remote.port, remote.address), remote)(error);
     },
@@ -767,7 +769,8 @@ function makeTransport(options, callback) {
       return wrap(protocols[target.protocol.toUpperCase()].open(target, error), target);
     },
     get: function(target, error) {
-      return wrap(protocols[target.protocol.toUpperCase()].get(target, error), target);
+      var flow = protocols[target.protocol.toUpperCase()].get(target, error);
+      return flow && wrap(flow, target);
     },
     send: function(target, message) {
       var cn = this.open(target);
