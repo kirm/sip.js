@@ -820,7 +820,6 @@ function resolve(uri, action) {
     var protocol = uri.params.transport || 'UDP';
     return action([{protocol: protocol, address: uri.host, port: uri.port || defaultPort(protocol)}]);
   }
-
   
   function resolve46(host, cb) {
     resolve4(host, function(e4, a4) {
@@ -834,18 +833,16 @@ function resolve(uri, action) {
   }
 
   if(uri.port) {
-    var protocols = uri.params.protocol ? [uri.params.protocol] : ['UDP', 'TCP', 'TLS'];
+    var protocols = uri.params.transport ? [uri.params.transport] : ['UDP', 'TCP', 'TLS'];
     
     resolve46(uri.host, function(err, address) {
-      address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || defaultPort(p)};});}
-
-)
+      address = (address || []).map(function(x) { return protocols.map(function(p) { return { protocol: p, address: x, port: uri.port || defaultPort(p)};});})
         .reduce(function(arr,v) { return arr.concat(v); }, []);
         action(address);
     });
   }
   else {
-    var protocols = uri.params.protocol ? [uri.params.protocol] : ['tcp', 'udp', 'tls'];
+    var protocols = uri.params.transport ? [uri.params.transport] : ['tcp', 'udp', 'tls'];
   
     var n = protocols.length;
     var addresses = [];
