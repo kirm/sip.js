@@ -1019,7 +1019,7 @@ function createInviteClientTransaction(rq, transport, tu, cleanup, options) {
       }
         
       b = setTimeout(function() {
-        tu(makeResponse(rq, 503));
+        tu(makeResponse(rq, 50));
         sm.enter(terminated);
       }, 32000);
     },
@@ -1210,6 +1210,7 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
   }
 
   var onresponse;
+  var lastStatusCode;
   function next() {
     onresponse = searching;
     
@@ -1223,11 +1224,14 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
         onresponse(address.local ? makeResponse(rq, 430) : makeResponse(rq, 503));  
       }
     }
-    else
-      onresponse(makeResponse(rq, 404));
+    else {
+      onresponse = callback;
+      onresponse(makeResponse(rq, lastStatusCode || 404));
+    }
   }
 
   function searching(rs) {
+    lastStatusCode = rs.status;
     if(rs.status === 503)
       return next();
     else if(rs.status > 100)
