@@ -468,17 +468,17 @@ function makeStreamParser(onMessage) {
 exports.makeStreamParser = makeStreamParser;
 
 function parseMessage(s) {
-  var r = s.toString('ascii').split('\r\n\r\n');
+  var r = s.toString('ascii').match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
   if(r) {
-    var m = parse(r[0]);
+    var m = parse(r[1]);
 
     if(m) {
       if(m.headers['content-length']) {
         var c = Math.max(0, Math.min(m.headers['content-length'], r[1].length));
-        m.content = r[1].substring(0, c);
+        m.content = r[2].substring(0, c);
       }
       else {
-        m.content = r[1];
+        m.content = r[2];
       }
       
       return m;
