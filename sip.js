@@ -474,7 +474,7 @@ function parseMessage(s) {
 
     if(m) {
       if(m.headers['content-length']) {
-        var c = Math.max(0, Math.min(m.headers['content-length'], r[1].length));
+        var c = Math.max(0, Math.min(m.headers['content-length'], r[2].length));
         m.content = r[2].substring(0, c);
       }
       else {
