@@ -1019,7 +1019,7 @@ function createInviteClientTransaction(rq, transport, tu, cleanup, options) {
       }
         
       b = setTimeout(function() {
-        tu(makeResponse(rq, 50));
+        tu(makeResponse(rq, 503));
         sm.enter(terminated);
       }, 32000);
     },
@@ -1089,7 +1089,7 @@ function createInviteClientTransaction(rq, transport, tu, cleanup, options) {
 
   var terminated = {enter: cleanup};
  
-  sm.enter(calling);
+  process.nextTick(function(){ sm.enter(calling); });
  
   return {message: sm.signal.bind(sm, 'message'), shutdown: function() { sm.enter(terminated); }};
 }
@@ -1144,7 +1144,7 @@ function createClientTransaction(rq, transport, tu, cleanup) {
 
   var terminated = {enter: cleanup};
 
-  sm.enter(trying);
+  process.nextTick(function() { sm.enter(trying); });
 
   return {message: sm.signal.bind(sm, 'message'), shutdown: function() { sm.enter(terminated); }};
 }
