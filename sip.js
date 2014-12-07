@@ -355,10 +355,12 @@ function stringify(m) {
   m.headers['content-length'] = (m.content || '').length;
 
   for(var n in m.headers) {
-    if(typeof m.headers[n] === 'string' || !stringifiers[n]) 
-      s += n + ': ' + m.headers[n] + '\r\n';
-    else
-      s += stringifiers[n](m.headers[n], n);
+    if(m.headers[n]) {
+      if(typeof m.headers[n] === 'string' || !stringifiers[n]) 
+        s += n + ': ' + m.headers[n] + '\r\n';
+      else
+        s += stringifiers[n](m.headers[n], n);
+    }
   }
   
   s += '\r\n';
