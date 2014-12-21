@@ -631,7 +631,7 @@ function makeWsTransport(options, callback) {
   function makeClient(uri) {
     if(clients[uri]) return clients[uri]();
 
-    var socket = new WebSocket(uri),
+    var socket = new WebSocket(uri, 'sip', {procotol: 'sip'}),
         queue = [],
         refs = 0;
     
