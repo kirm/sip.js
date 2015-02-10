@@ -1219,8 +1219,12 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
     if(addresses.length > 0) {
       try {
         var address = addresses.shift();
-        var client = transaction(connect(address, function() { client.message(makeResponse(rq, 503));}), rq, 
-          function() { onresponse.apply(null, arguments); }); 
+        var client = transaction(connect(address, function(err) {
+          if(err) {
+            console.log("err: ", error);
+          }
+          client.message(makeResponse(rq, 503));
+        }), rq, function() { onresponse.apply(null, arguments); }); 
       }
       catch(e) {
         onresponse(address.local ? makeResponse(rq, 430) : makeResponse(rq, 503));  
