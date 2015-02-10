@@ -609,7 +609,7 @@ function makeWsTransport(options, callback) {
   
   function init(ws) {
     var remote = {address: ws._socket.remoteAddress, port: ws._socket.remotePort},
-        local = {address: ws._socket.address().address, port: ws._socket.address().port}
+        local = {address: ws._socket.address().address, port: ws._socket.address().port},
         flowid = [remote.address, remote.port, local.address, local.port].join();
 
     flows[flowid] = ws;
