@@ -669,6 +669,11 @@ function makeWsTransport(options, callback) {
         release: function() {},
         protocol: 'WS'
       };
+    } else {
+        console.log("Failed to get ws for target. Target/flow was:");
+        console.log(util.inspect(flow));
+        console.log("Flows[] were:");
+        console.log(util.inspect(flows));
     }
   }
 
