@@ -6,12 +6,7 @@ var dgram = require('dgram');
 var tls = require('tls');
 var os = require('os');
 var crypto = require('crypto');
-
-try {
 var WebSocket = require('ws');
-}
-catch(e) {
-}
 
 function debug(e) {
   if(e.stack) {
@@ -614,7 +609,7 @@ function makeWsTransport(options, callback) {
   
   function init(ws) {
     var remote = {address: ws._socket.remoteAddress, port: ws._socket.remotePort},
-        local = {address: ws._socket.address().address, port: ws._socket.address().port}
+        local = {address: ws._socket.address().address, port: ws._socket.address().port},
         flowid = [remote.address, remote.port, local.address, local.port].join();
 
     flows[flowid] = ws;
@@ -674,6 +669,11 @@ function makeWsTransport(options, callback) {
         release: function() {},
         protocol: 'WS'
       };
+    } else {
+        console.log("Failed to get ws for target. Target/flow was:");
+        console.log(util.inspect(flow));
+        console.log("Flows[] were:");
+        console.log(util.inspect(flows));
     }
   }
 
@@ -1219,8 +1219,12 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
     if(addresses.length > 0) {
       try {
         var address = addresses.shift();
-        var client = transaction(connect(address, function() { client.message(makeResponse(rq, 503));}), rq, 
-          function() { onresponse.apply(null, arguments); }); 
+        var client = transaction(connect(address, function(err) {
+          if(err) {
+            console.log("err: ", error);
+          }
+          client.message(makeResponse(rq, 503));
+        }), rq, function() { onresponse.apply(null, arguments); }); 
       }
       catch(e) {
         onresponse(address.local ? makeResponse(rq, 430) : makeResponse(rq, 503));  
