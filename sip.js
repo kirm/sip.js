@@ -1221,7 +1221,7 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
         var address = addresses.shift();
         var client = transaction(connect(address, function(err) {
           if(err) {
-            console.log("err: ", error);
+            console.log("err: ", err);
           }
           client.message(makeResponse(rq, 503));
         }), rq, function() { onresponse.apply(null, arguments); }); 
