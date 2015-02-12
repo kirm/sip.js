@@ -44,7 +44,7 @@ function onRegister(rq, flow) {
   if(!rq.headers.to.params.tag) rq.headers.to.params.tag = crypto.randomBytes(8).toString('hex');
  
   var c = contacts(user);
-  if(contacts.length) {
+  if(c.length) {
     proxy.send(sip.makeResponse(rq, 200, 'OK', {headers: {
       contact: contacts(user).map(function(c) { return c.contact; }),
       required:  c.some(function(x) { return x.ob; }) ? 'path, outbound' : undefined,
