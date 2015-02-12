@@ -102,7 +102,7 @@ Starts SIP protocol.
 
 `options` - an object optionally containing following properties. 
 
-* `port` - port to be used by all transport (unless specified above with exception). 5060 by default.
+* `port` - port to be used by UDP and TCP transports. 5060 by default.
 * `address` - interface address to be listen on. By default sip.js listens on all interfaces.
 * `udp` - enables UDP transport. Enabled by default.
 * `tcp` - enables TCP transport. Enabled by default.
@@ -112,7 +112,7 @@ Starts SIP protocol.
 * `tls_port` - port for TLS transport to listen on. 5061 by default.
 * `publicAddress`, `hostname` - address and hostname to be used within sip.js generated local uris and via headers. Sip.js will use `options.publicAddress` when
   it's defined, then fallback to `options.hostname` and the fallback to value returned by node.js `os.hostname()` API.
-* `ws_port` - port for WebSocket transport to listen on. Required to enable WebSocket transport. (no default provided)
+* `ws_port` - port for WebSockets transport. To enable WebSockets transport, this field is required; no default provided.
 
 
 `onRequest` - callback to be called on new request arrival. It is expected to be a function of two arguments
