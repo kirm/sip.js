@@ -9,7 +9,7 @@ function unq(a) {
 }
 
 function q(a) {
-  if(a && a[0] !== '"')
+  if(typeof a === 'string' && a[0] !== '"')
     return ['"', a, '"'].join('');
   return a;
 }
