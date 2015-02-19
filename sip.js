@@ -335,8 +335,7 @@ var stringifiers = {
   'authentication-info': function(h) {
     return 'Authentication-Info: ' + stringifyAuthHeader(h) + '\r\n';
   },
-  'refer-to': function(h) { return 'Refer-To: ' + stringifyAOR(h) + '\r\n'; },
-  'call-id': function(h) { return 'Call-ID: ' + h + '\r\n'; }
+  'refer-to': function(h) { return 'Refer-To: ' + stringifyAOR(h) + '\r\n'; }
 };
 
 function prettifyHeaderName(s) {
