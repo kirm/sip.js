@@ -335,8 +335,15 @@ var stringifiers = {
   'authentication-info': function(h) {
     return 'Authentication-Info: ' + stringifyAuthHeader(h) + '\r\n';
   },
-  'refer-to': function(h) { return 'Refer-To: ' + stringifyAOR(h) + '\r\n'; }
+  'refer-to': function(h) { return 'Refer-To: ' + stringifyAOR(h) + '\r\n'; },
+  'call-id': function(h) { return 'Call-ID: ' + h + '\r\n'; }
 };
+
+function prettifyHeaderName(s) {
+  if(s == 'call-id') return 'Call-ID';
+
+  return s.replace(/\b([a-z])/g, function(a) { return a.toUpperCase(); });
+}
 
 function stringify(m) {
   var s;
@@ -352,7 +359,7 @@ function stringify(m) {
   for(var n in m.headers) {
     if(m.headers[n]) {
       if(typeof m.headers[n] === 'string' || !stringifiers[n]) 
-        s += n + ': ' + m.headers[n] + '\r\n';
+        s += prettifyHeaderName(n) + ': ' + m.headers[n] + '\r\n';
       else
         s += stringifiers[n](m.headers[n], n);
     }
