@@ -207,6 +207,7 @@ function initClientContext(ctx, rs, creds) {
 }
 
 exports.signRequest = function (ctx, rq, rs, creds) {
+  ctx = ctx || {};
   if(rs)
     initClientContext(ctx, rs, creds);
 
@@ -233,7 +234,7 @@ exports.signRequest = function (ctx, rq, rs, creds) {
   rq.headers[hname] = (rq.headers[hname] || []).filter(function(x) { return unq(x.realm) !== ctx.realm; });
   rq.headers[hname].push(signature);
 
-  return rq;
+  return ctx.qop ? ctx : null;
 }
 
 exports.authenticateResponse = function(ctx, rs) {
