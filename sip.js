@@ -296,7 +296,12 @@ exports.stringifyAuthHeader = stringifyAuthHeader;
 var stringifiers = {
   via: function(h) {
     return h.map(function(via) {
-      return 'Via: SIP/'+stringifyVersion(via.version)+'/'+via.protocol.toUpperCase()+' '+via.host+(via.port?':'+via.port:'')+stringifyParams(via.params)+'\r\n';
+      if(via.host) {
+        return 'Via: SIP/'+stringifyVersion(via.version)+'/'+via.protocol.toUpperCase()+' '+via.host+(via.port?':'+via.port:'')+stringifyParams(via.params)+'\r\n';
+      }
+      else {
+        return '';
+      }
     }).join('');
   },
   to: function(h) {
