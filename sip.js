@@ -1032,7 +1032,7 @@ function createInviteClientTransaction(rq, transport, tu, cleanup, options) {
       }
         
       b = setTimeout(function() {
-        tu(makeResponse(rq, 503));
+        tu(makeResponse(rq, 408));
         sm.enter(terminated);
       }, 32000);
     },
@@ -1136,7 +1136,7 @@ function createClientTransaction(rq, transport, tu, cleanup) {
       e = setTimeout(function() { sm.signal('timerE', t*2); }, t*2);
     },
     timerF: function() {
-      tu(makeResponse(rq, 503));
+      tu(makeResponse(rq, 408));
       sm.enter(terminated);
     }
   };
