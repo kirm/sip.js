@@ -1343,6 +1343,12 @@ exports.create = function(options, callback) {
             resolve(hop, callback);
         })(function(addresses) {
           if(m.method === 'ACK') {
+            if(!Array.isArray(m.headers.via))
+              m.headers.via = [];
+
+            if(m.headers.via.length === 0)
+              m.headers.via.unshift({params: {branch: generateBranch()}});
+            
             if(addresses.length === 0) {
               errorLog(new Error("ACK: couldn't resolve " + stringifyUri(m.uri)));
               return;
