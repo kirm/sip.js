@@ -769,6 +769,8 @@ function makeTransport(options, callback) {
         m.headers.via[0].protocol = this.protocol;
 
         if(this.protocol === 'UDP' && (!options.hasOwnProperty('rport') || options.rport)) {
+          if(m.headers.via[0].params === undefined)
+            m.headers.via[0].params = {};
           m.headers.via[0].params.rport = null;
         }
       }
