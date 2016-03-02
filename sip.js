@@ -900,7 +900,7 @@ exports.resolve = resolve;
 
 //transaction layer
 function generateBranch() {
-  return ['z9hG4bK',Math.round(Math.random()*1000000)].join('');
+  return ['z9hG4bK',(Math.random()+1).toString(36).substring(2)].join('');
 }
 
 exports.generateBranch = generateBranch;
