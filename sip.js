@@ -476,7 +476,7 @@ function makeStreamParser(onMessage) {
 exports.makeStreamParser = makeStreamParser;
 
 function parseMessage(s) {
-  var r = s.toString('ascii').match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
+  var r = s.toString('utf-8').match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
   if(r) {
     var m = parse(r[1]);
 
@@ -520,7 +520,7 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
       flows[flowid] = remotes[remoteid];
     }
 
-    stream.setEncoding('ascii');
+    stream.setEncoding('utf-8');
     stream.on('data', makeStreamParser(function(m) {
       if(checkMessage(m)) {
         if(m.method) m.headers.via[0].params.received = remote.address;
@@ -556,7 +556,7 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
           if(--refs === 0) stream.emit('no_reference');
         },
         send: function(m) {
-          stream.write(stringify(m), 'ascii');
+          stream.write(stringify(m), 'utf-8');
         },
         protocol: protocol
       }
@@ -727,7 +727,8 @@ function makeUdpTransport(options, callback) {
     return {
       send: function(m) {
         var s = stringify(m);
-        socket.send(new Buffer(s, 'ascii'), 0, s.length, remote.port, remote.address);          
+        var buffer = new Buffer(s, 'utf-8');
+        socket.send(buffer, 0, buffer.length, remote.port, remote.address);          
       },
       protocol: 'UDP',
       release : function() {}
@@ -1302,7 +1303,7 @@ exports.create = function(options, callback) {
   }
 
   function decodeFlowToken(token) {
-    var s = (new Buffer(token, 'base64')).toString('ascii').split(',');
+    var s = (new Buffer(token, 'base64')).toString('utf-8').split(',');
     if(s.length != 6) return;
 
     var flow = {protocol: s[1], address: s[2], port: +s[3], local: {address: s[4], port: +s[5]}};
