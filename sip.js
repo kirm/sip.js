@@ -668,7 +668,19 @@ function makeWsTransport(options, callback) {
   }
 
   if(options.ws_port) {
-    var server = new WebSocket.Server({port:options.ws_port});
+    if(options.tls) {
+      var http = require('https');
+      var server = new WebSocket.Server({
+          server: http.createServer(options.tls, function(rq,rs) { 
+            rs.writeHead(200);
+            rs.end("");
+          }).listen(options.ws_port)
+      });
+    } 
+    else {
+      var server = new WebSocket.Server({port:options.ws_port});
+    }
+
     server.on('connection',init);
   }
 
