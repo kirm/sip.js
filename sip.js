@@ -911,8 +911,10 @@ function resolve(uri, action) {
 exports.resolve = resolve;
 
 //transaction layer
+var uuid = require('node-uuid');
 function generateBranch() {
-  return ['z9hG4bK',Math.round(Math.random()*1000000)].join('');
+  var buffer = new Buffer(16);
+  return ['z9hG4bK',uuid.v4({}, buffer).toString('hex')].join('');
 }
 
 exports.generateBranch = generateBranch;
