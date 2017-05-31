@@ -121,7 +121,7 @@ exports.challenge = function(ctx, rs) {
       scheme: 'Digest',
       realm: q(ctx.realm),
       qop: q(ctx.qop),
-      algorithm: q(ctx.algoritm),
+      algorithm: ctx.algoritm,
       nonce: q(ctx.nonce),
       opaque: q(ctx.opaque)
     }
@@ -222,7 +222,7 @@ exports.signRequest = function (ctx, rq, rs, creds) {
     nonce: q(ctx.nonce), 
     uri: q(ctx.uri),
     nc: nc,
-    algorithm: q(ctx.algorithm),
+    algorithm: ctx.algorithm,
     cnonce: q(ctx.cnonce),
     qop: ctx.qop,
     opaque: q(ctx.opaque),
