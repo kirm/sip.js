@@ -460,10 +460,10 @@ function makeStreamParser(onMessage) {
     if( Buffer.byteLength(r,"utf8") >= m.headers['content-length']) {
       var buffer= new Buffer(r, "utf8");
       m.content = buffer.slice(0, m.headers['content-length']).toString("utf8");
+      var s = buffer.slice(m.headers['content-length']);
 
       onMessage(m);
       
-      var s = buffer.slice(m.headers['content-length']).toString("utf8");
       state = headers;
       r = '';
       headers(s);
