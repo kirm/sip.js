@@ -440,7 +440,7 @@ function makeStreamParser(onMessage) {
   var r = '';
   
   function headers(data) {
-    r += data;
+    r += data.toString("utf8");
     var a = r.match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
 
     if(a) {
@@ -455,7 +455,7 @@ function makeStreamParser(onMessage) {
   }
 
   function content(data) {
-    r += data;
+    r += data.toString("utf8");
 
     if( Buffer.byteLength(r,"utf8") >= m.headers['content-length']) {
       var buffer= new Buffer(r, "utf8");
