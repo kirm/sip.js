@@ -22,7 +22,7 @@
       "name": "token1~` token2'+_ token3*%!.-",
       "uri": "sip:mundane@example.com",
       "params": {
-        "fromparam''~+*_!.-%": "\"Q\u0000P0P1P>Q\u0002P0Q\u000eQ\tP8P9\"",
+        "fromparam''~+*_!.-%": "\"работающий\"",
         "tag": "_token~1'+`*%!-."
       }
     },
@@ -32,7 +32,7 @@
       "method": "!interesting-Method0123456789_*+`.%indeed'~"
     },
     "max-forwards": "255",
-    "extensionheader-!.%*+_`'~": "o;?e$'e\u0001\u001ci\u001b;",
+    "extensionheader-!.%*+_`'~": "大停電",
     "content-length": 0
   },
   "content": ""

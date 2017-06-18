@@ -1,10 +1,13 @@
 {
   "name": "sip",
   "description": "Simple SIP implementation",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "homepage": "http://github.com/kirm/sip.js",
   "author": "Kirill Mikhailov <kirill.mikhailov@gmail.com>",
   "main": "sip",
+  "scripts": {
+    "test": "./node_modules/.bin/coffee test/runtests.coffee"
+  },
   "directories": {
     "lib": "",
     "example": "./examples",

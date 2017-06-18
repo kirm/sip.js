@@ -55,7 +55,17 @@
     "content-type": "application/sdp",
     "route": [
       {
-        "uri": "sip:services.example.com;lr;unknownwith=value;unknown-no-value",
+        "uri": {
+          "schema": "sip",
+          "host": "services.example.com",
+          "port": null,
+          "params": {
+            "lr": null,
+            "unknownwith": "value",
+            "unknown-no-value": null
+          },
+          "headers": {}
+        },
         "params": {}
       }
     ],
@@ -65,6 +75,7 @@
         "uri": "sip:jdrosen@example.com",
         "params": {
           "newparam": "newvalue",
+          "secondparam": null,
           "q": "0.33"
         }
       }
