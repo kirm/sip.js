@@ -730,10 +730,14 @@ function makeUdpTransport(options, callback) {
   }
 
   var address = options.address || '0.0.0.0';
-  var port = options.port || 5060;
+  var port = typeof(options.port) == undefined ? 5060 : options.port;
 
   var socket = dgram.createSocket(net.isIPv6(address) ? 'udp6' : 'udp4', onMessage); 
   socket.bind(port, address);
+
+  socket.on("listening", function() {
+      options.port = socket.address().port;
+  });
 
   function open(remote, error) {
     return {
