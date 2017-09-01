@@ -1,13 +1,21 @@
 "use strict";
-//Compute .json
+/*
+Compute .json
+
+This script will parse the raw sip messages *.dat that are present
+in this directory and export the result in a file *.json.
+Note that an empty file .json has to be present in the dir.
+
+Be careful, check that the .json generated match the value 
+that is actually expected.
+
+*/
 
 let fs= require("fs");
 let path = require("path");
 let sip = require("../../");
 
-//let encoding= "ascii";
 let encoding= "utf8";
-
 
 let files = fs.readdirSync(__dirname);
 
@@ -40,5 +48,4 @@ for (let name of names) {
 
 }
 
-console.log("DONE " + encoding);
-
+console.log("DONE");
