@@ -10,14 +10,21 @@
         "host": "127.0.0.1",
         "port": 5070,
         "params": {
-          "branch": "z9hG4bK-d87543-4dade06d0bdb11ee-1--d87543-"
+          "branch": "z9hG4bK-d87543-4dade06d0bdb11ee-1--d87543-",
+          "rport": null
         }
       }
     ],
     "max-forwards": "70",
     "route": [
       {
-        "uri": "sip:127.0.0.1:5080",
+        "uri": {
+          "schema": "sip",
+          "host": "127.0.0.1",
+          "port": 5080,
+          "params": {},
+          "headers": {}
+        },
         "params": {}
       }
     ],
@@ -43,11 +50,10 @@
       "seq": 1,
       "method": "MESSAGE"
     },
-    "content-transfer-encoding": "binary",
-    "content-type": "multipart/mixed;boundary=7a9cbec02ceef655",
+    "content-type": "text/plain",
     "date": "Sat, 15 Oct 2005 04:44:56 GMT",
     "user-agent": "SIPimp.org/0.2.5 (curses)",
-    "content-length": 553
+    "content-length": 185
   },
-  "content": "--7a9cbec02ceef655\r\nContent-Type: text/plain\r\nContent-Transfer-Encoding: binary"
+  "content": "--7a9cbec02ceef655\r\nContent-Type: text/plain\r\nContent-Transfer-Encoding: binary\r\n\r\nHello\r\n--7a9cbec02ceef655\r\nContent-Type: application/octet-stream\r\nContent-Transfer-Encoding: binary\r\n"
 }

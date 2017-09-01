@@ -1,7 +1,7 @@
 {
   "version": "2.0",
   "status": 200,
-  "reason": "= 2**3 * 5**2 P=P> Q\u0001Q\u0002P> P4P5P2Q\u000fP=P>Q\u0001Q\u0002P> P4P5P2Q\u000fQ\u0002Q\f - P?Q\u0000P>Q\u0001Q\u0002P>P5",
+  "reason": "= 2**3 * 5**2 но сто девяносто девять - простое",
   "headers": {
     "via": [
       {

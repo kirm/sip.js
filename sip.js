@@ -71,7 +71,7 @@ function parseParams(data, hdr) {
   var re = /\s*;\s*([\w\-.!%*_+`'~]+)(?:\s*=\s*([\w\-.!%*_+`'~]+|"[^"\\]*(\\.[^"\\]*)*"))?/g; 
   
   for(var r = applyRegex(re, data); r; r = applyRegex(re, data)) {
-    hdr.params[r[1].toLowerCase()] = r[2];
+    hdr.params[r[1].toLowerCase()] = r[2] || null;
   }
 
   return hdr;
@@ -93,7 +93,7 @@ function parseGenericHeader(d, h) {
 }
 
 function parseAOR(data) {
-  var r = applyRegex(/((?:[\w\-.!%*_+`'~]+)(?:\s+[\w\-.!%*_+`'~]+)*|"[^"\\]*(?:\\.[^"\\]*)*")?\s*\<\s*([^>]*)\s*\>|((?:[^\s@"<]@)?[^\s;]+)/g, data);
+  var r = applyRegex(/((?:[\w\-.!%*_+`'~]+)(?:\s+[\w\-.!%*_+`'~]+)*|"[^"\\]*(?:\\.[^"\\]*)*")?\s*\<\s*((?:[^">]|(?:"[^"]*"))*)\s*\>|((?:[^\s@"<]@)?[^\s;]+)/g, data);
 
   return parseParams(data, {name: r[1], uri: r[2] || r[3] || ''});
 }
@@ -358,7 +358,7 @@ function stringify(m) {
     s = m.method + ' ' + stringifyUri(m.uri) + ' SIP/' + stringifyVersion(m.version) + '\r\n';
   }
 
-  m.headers['content-length'] = (m.content || '').length;
+  m.headers['content-length'] = Buffer.byteLength(m.content || '', "utf8");
 
   for(var n in m.headers) {
     if(typeof m.headers[n] !== "undefined") {
@@ -440,7 +440,7 @@ function makeStreamParser(onMessage) {
   var r = '';
   
   function headers(data) {
-    r += data;
+    r += data.toString("utf8");
     var a = r.match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
 
     if(a) {
@@ -455,14 +455,15 @@ function makeStreamParser(onMessage) {
   }
 
   function content(data) {
-    r += data;
+    r += data.toString("utf8");
 
-    if(r.length >= m.headers['content-length']) {
-      m.content = r.substring(0, m.headers['content-length']);
-      
+    if( Buffer.byteLength(r,"utf8") >= m.headers['content-length']) {
+      var buffer= new Buffer(r, "utf8");
+      m.content = buffer.slice(0, m.headers['content-length']).toString("utf8");
+      var s = buffer.slice(m.headers['content-length']);
+
       onMessage(m);
       
-      var s = r.substring(m.headers['content-length']);
       state = headers;
       r = '';
       headers(s);
@@ -476,14 +477,14 @@ function makeStreamParser(onMessage) {
 exports.makeStreamParser = makeStreamParser;
 
 function parseMessage(s) {
-  var r = s.toString('ascii').match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
+  var r = s.toString('utf8').match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
   if(r) {
     var m = parse(r[1]);
 
     if(m) {
       if(m.headers['content-length']) {
-        var c = Math.max(0, Math.min(m.headers['content-length'], r[2].length));
-        m.content = r[2].substring(0, c);
+        var c = Math.max(0, Math.min(m.headers['content-length'], Buffer.byteLength(r[2], "utf8")));
+        m.content = (new Buffer(r[2], "utf8")).slice(0,c).toString("utf8");
       }
       else {
         m.content = r[2];
@@ -520,7 +521,7 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
       flows[flowid] = remotes[remoteid];
     }
 
-    stream.setEncoding('ascii');
+    stream.setEncoding('utf8');
     stream.on('data', makeStreamParser(function(m) {
       if(checkMessage(m)) {
         if(m.method) m.headers.via[0].params.received = remote.address;
@@ -556,7 +557,7 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
           if(--refs === 0) stream.emit('no_reference');
         },
         send: function(m) {
-          stream.write(stringify(m), 'ascii');
+          stream.write(stringify(m), 'utf8');
         },
         protocol: protocol
       }
@@ -739,7 +740,7 @@ function makeUdpTransport(options, callback) {
     return {
       send: function(m) {
         var s = stringify(m);
-        socket.send(new Buffer(s, 'ascii'), 0, s.length, remote.port, remote.address);          
+        socket.send(new Buffer(s, 'utf8'), 0, s.length, remote.port, remote.address);          
       },
       protocol: 'UDP',
       release : function() {}
@@ -1314,7 +1315,7 @@ exports.create = function(options, callback) {
   }
 
   function decodeFlowToken(token) {
-    var s = (new Buffer(token, 'base64')).toString('ascii').split(',');
+    var s = (new Buffer(token, 'base64')).toString('utf8').split(',');
     if(s.length != 6) return;
 
     var flow = {protocol: s[1], address: s[2], port: +s[3], local: {address: s[4], port: +s[5]}};
