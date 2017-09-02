@@ -476,7 +476,7 @@ function makeStreamParser(onMessage) {
 exports.makeStreamParser = makeStreamParser;
 
 function parseMessage(s) {
-  var r = s.toString('ascii').match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
+  var r = s.toString('binary').match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
   if(r) {
     var m = parse(r[1]);
 
@@ -520,7 +520,7 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
       flows[flowid] = remotes[remoteid];
     }
 
-    stream.setEncoding('ascii');
+    stream.setEncoding('binary');
     stream.on('data', makeStreamParser(function(m) {
       if(checkMessage(m)) {
         if(m.method) m.headers.via[0].params.received = remote.address;
@@ -556,7 +556,7 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
           if(--refs === 0) stream.emit('no_reference');
         },
         send: function(m) {
-          stream.write(stringify(m), 'ascii');
+          stream.write(stringify(m), 'binary');
         },
         protocol: protocol
       }
@@ -642,7 +642,7 @@ function makeWsTransport(options, callback) {
         refs = 0;
     
     function send_connecting(m) { queue.push(stringify(m)); }
-    function send_open(m) { socket.send(typeof m === 'string' ? m : stringify(m)); }
+    function send_open(m) { socket.send(new Buffer(typeof m === 'string' ? m : stringify(m), 'binary')); }
     var send = send_connecting;
 
     socket.on('open', function() { 
@@ -739,7 +739,7 @@ function makeUdpTransport(options, callback) {
     return {
       send: function(m) {
         var s = stringify(m);
-        socket.send(new Buffer(s, 'ascii'), 0, s.length, remote.port, remote.address);          
+        socket.send(new Buffer(s, 'binary'), 0, s.length, remote.port, remote.address);          
       },
       protocol: 'UDP',
       release : function() {}
