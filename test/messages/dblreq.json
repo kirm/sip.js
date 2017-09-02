@@ -37,5 +37,5 @@
     ],
     "content-length": 0
   },
-  "content": "\r\nINVITE sip:joe@example.com SIP/2.0\r\nt: sip:joe@example.com\r\nFrom: sip:caller@example.net;tag=141334\r\nMax-Forwards: 8\r\nCall-ID: dblreq.0ha0isnda977644900765@192.0.2.15\r\nCSeq: 8 INVITE\r\nVia: SIP/2.0/UDP 192.0.2.15;branch=z9hG4bKkdjuw380234\r\nContent-Type: application/sdp\r\nContent-Length: 150"
+  "content": "\r\nINVITE sip:joe@example.com SIP/2.0\r\nt: sip:joe@example.com\r\nFrom: sip:caller@example.net;tag=141334\r\nMax-Forwards: 8\r\nCall-ID: dblreq.0ha0isnda977644900765@192.0.2.15\r\nCSeq: 8 INVITE\r\nVia: SIP/2.0/UDP 192.0.2.15;branch=z9hG4bKkdjuw380234\r\nContent-Type: application/sdp\r\nContent-Length: 150\r\n\r\nv=0\r\no=mhandley 29739 7272939 IN IP4 192.0.2.15\r\ns=-\r\nc=IN IP4 192.0.2.15\r\nt=0 0\r\nm=audio 49217 RTP/AVP 0 12\r\nm =video 3227 RTP/AVP 31\r\na=rtpmap:31 LPC\r\n\r\n"
 }

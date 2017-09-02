@@ -68,14 +68,16 @@ test1 = (success) ->
 test2 = (success) ->
   # FIXME: 'intmeth', 'unreason' - fails
   messages = ['wsinv', 'esc01', 'escnull', 'esc02', 'lwsdisp', 'longreq', 'dblreq', 'semiuri', 'transports', 'mpart01', 'noreason', 'intmeth', 'unreason']
-
+  
   messages.forEach (name) ->
-    # console.log "# processing '#{name}'" # XXX
-    m = fs.readFileSync "#{__dirname}/messages/#{ name }.dat", 'ascii'
-    p = fs.readFileSync "#{__dirname}/messages/#{ name }.json", 'ascii'
+    console.log "# processing '#{name}'" # XXX
+    m = fs.readFileSync "#{__dirname}/messages/#{ name }.dat"
+    p = fs.readFileSync "#{__dirname}/messages/#{ name }.json", 'binary'
+    mp = sip.parse m
 
-    assert.deepEqual (JSON.parse JSON.stringify sip.parse m), (JSON.parse p)
-    
+    assert.deepEqual (JSON.parse JSON.stringify mp), (JSON.parse p)
+    assert(Buffer.co  mpare (new Buffer mp.content || '', 'binary'), m.slice (m.indexOf (new Buffer '\r\n\r\n', 'binary') + 4))
+
   success()
 
 exports.tests = [test1, test2]

@@ -42,12 +42,12 @@ test2 = (success) ->
   assert.ok rs.headers['www-authenticate'], "www-authenticate header not present"
   
   client = {}
-  rq = digest.signRequest client, rq, rs, {user:'carol', password: '1234'}
+  digest.signRequest client, rq, rs, {user:'carol', password: '1234'}
  
   assert.ok digest.authenticateRequest server, rq, {user: 'carol', password: '1234'}
   assert.ok digest.authenticateResponse client, digest.signResponse server, sip.makeResponse rq, 200
 
-  rq = digest.signRequest client, rq
+  digest.signRequest client, rq
   
   assert.ok digest.authenticateRequest server, rq
   assert.ok digest.authenticateResponse client, digest.signResponse server, sip.makeResponse rq, 200
@@ -74,11 +74,11 @@ test3 = (success) ->
   assert.ok rs.headers['proxy-authenticate'], "proxy-authenticate header not present"
   
   client = {}
-  rq = digest.signRequest client, rq, rs, {user:'carol', password: '1234'}
+  digest.signRequest client, rq, rs, {user:'carol', password: '1234'}
  
   assert.ok digest.authenticateRequest server, rq, {user: 'carol', password: '1234'}
 
-  rq = digest.signRequest client, rq
+  digest.signRequest client, rq
   
   assert.ok digest.authenticateRequest server, rq
 

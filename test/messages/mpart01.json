@@ -17,7 +17,13 @@
     "max-forwards": "70",
     "route": [
       {
-        "uri": "sip:127.0.0.1:5080",
+        "uri": {
+          "schema": "sip",
+          "host": "127.0.0.1",
+          "port": 5080,
+          "params": {},
+          "headers": {}
+        },
         "params": {}
       }
     ],
@@ -49,5 +55,5 @@
     "user-agent": "SIPimp.org/0.2.5 (curses)",
     "content-length": 553
   },
-  "content": "--7a9cbec02ceef655\r\nContent-Type: text/plain\r\nContent-Transfer-Encoding: binary"
+  "content": "--7a9cbec02ceef655\r\nContent-Type: text/plain\r\nContent-Transfer-Encoding: binary\r\n\r\nHello\r\n--7a9cbec02ceef655\r\nContent-Type: application/octet-stream\r\nContent-Transfer-Encoding: binary\r\n\r\n0‚\u0001R\u0006\t*†H†÷\r\u0001\u0007\u0002 ‚\u0001C0‚\u0001?\u0002\u0001\u00011\t0\u0007\u0006\u0005+\u000e\u0003\u0002\u001a0\u000b\u0006\t*†H†÷\r\u0001\u0007\u00011‚\u0001 0‚\u0001\u001c\u0002\u0001\u00010|0p1\u000b0\t\u0006\u0003U\u0004\u0006\u0013\u0002US1\u00130\u0011\u0006\u0003U\u0004\b\u0013\nCalifornia1\u00110\u000f\u0006\u0003U\u0004\u0007\u0013\bSan Jose1\u000e0\f\u0006\u0003U\u0004\n\u0013\u0005sipit1)0'\u0006\u0003U\u0004\u000b\u0013 Sipit Test Certificate Authority\u0002\b\u0001•\u0000q\u00023\u0001\u00130\u0007\u0006\u0005+\u000e\u0003\u0002\u001a0\r\u0006\t*†H†÷\r\u0001\u0001\u0001\u0005\u0000\u0004€ôfùHğR-Òå—•ªéòş\u0015 fYqb’èÚ*¨Ø5\nhÎÿ®<½+ÿ\u0016uİÕdY=ÖG(òb ÷éAt3\rš\u0015í«Û“Ñ\fB\u0010.{r‰ÒœÀÉ®.ûÇÀÏù\u0017/;\u0002~OÀ'áTmä¶ª:»>fÌË]ÖÆKƒƒ\u0014œ¸æÿ\u0018-”Oå{e¼™Ğ\u0005\r\n--7a9cbec02ceef655--\r\n"
 }
