@@ -451,6 +451,8 @@ function makeStreamParser(onMessage) {
         state = content;
         content('');
       }
+      else
+        headers('');
     }
   }
 
