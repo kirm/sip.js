@@ -113,6 +113,8 @@ Starts SIP protocol.
 * `publicAddress`, `hostname` - address and hostname to be used within sip.js generated local uris and via headers. Sip.js will use `options.publicAddress` when
   it's defined, then fallback to `options.hostname` and the fallback to value returned by node.js `os.hostname()` API.
 * `ws_port` - port for WebSockets transport. To enable WebSockets transport, this field is required; no default provided.
+* `maxBytesHeaders` - (For TCP and TLS ) Max allowed length in bytes of a SIP message headers ( without content ). ; default: 60480.
+* `maxContentLength` - (For TCP and TLS ) Max allowed content length for a SIP message. ; default: 604800.
 
 
 `onRequest` - callback to be called on new request arrival. It is expected to be a function of two arguments

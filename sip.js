@@ -435,12 +435,28 @@ function defaultPort(proto) {
   return proto.toUpperCase() === 'TLS' ? 5061 : 5060;
 }
 
-function makeStreamParser(onMessage) {
+function makeStreamParser(onMessage, onFlood, maxBytesHeaders, maxContentLength) {
+
+  onFlood= onFlood || function(){};
+  maxBytesHeaders= maxBytesHeaders || 60480;
+  maxContentLength= maxContentLength || 604800;
+
   var m;
   var r = '';
   
   function headers(data) {
     r += data;
+
+    if( r.length > maxBytesHeaders ){
+
+      r = '';
+
+      onFlood();
+
+      return;
+
+    }
+
     var a = r.match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
 
     if(a) {
@@ -448,6 +464,15 @@ function makeStreamParser(onMessage) {
       m = parse(a[1]);
 
       if(m && m.headers['content-length'] !== undefined) {
+
+        if (m.headers['content-length'] > maxContentLength) {
+
+          r = '';
+
+          onFlood();
+
+        }
+
         state = content;
         content('');
       }
@@ -474,6 +499,7 @@ function makeStreamParser(onMessage) {
   var state=headers;
 
   return function(data) { state(data); }
+
 }
 exports.makeStreamParser = makeStreamParser;
 
@@ -508,7 +534,7 @@ function checkMessage(msg) {
     msg.headers.cseq;
 }
 
-function makeStreamTransport(protocol, connect, createServer, callback) {
+function makeStreamTransport(protocol, maxBytesHeaders, maxContentLength, connect, createServer, callback) {
   var remotes = Object.create(null);
   var flows = Object.create(null);
 
@@ -522,15 +548,27 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
       flows[flowid] = remotes[remoteid];
     }
 
-    stream.setEncoding('binary');
-    stream.on('data', makeStreamParser(function(m) {
+    var onMessage= function(m) {
+
       if(checkMessage(m)) {
         if(m.method) m.headers.via[0].params.received = remote.address;
         callback(m,
           {protocol: remote.protocol, address: stream.remoteAddress, port: stream.remotePort, local: { address: stream.localAddress, port: stream.localPort}},
           stream);
       }
-    }));
+
+    };
+
+    var onFlood= function() {
+
+      console.log("Flood attempt, destroying stream");
+
+      stream.destroy();
+
+    };
+
+    stream.setEncoding('binary');
+    stream.on('data', makeStreamParser( onMessage, onFlood, maxBytesHeaders, maxContentLength));
   
     stream.on('close',    function() {
       if(flowid) delete flows[flowid]; 
@@ -594,6 +632,8 @@ function makeStreamTransport(protocol, connect, createServer, callback) {
 function makeTlsTransport(options, callback) {
   return makeStreamTransport(
     'TLS', 
+    options.maxBytesHeaders,
+    options.maxContentLength,
     function(port, host, callback) { return tls.connect(port, host, options.tls, callback); }, 
     function(callback) {
       var server = tls.createServer(options.tls, callback);
@@ -606,6 +646,8 @@ function makeTlsTransport(options, callback) {
 function makeTcpTransport(options, callback) {
   return makeStreamTransport(
     'TCP',
+    options.maxBytesHeaders,
+    options.maxContentLength,
     function(port, host, callback) { return net.connect(port, host, callback); },
     function(callback) { 
       var server = net.createServer(callback);
