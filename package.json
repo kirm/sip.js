@@ -5,6 +5,9 @@
   "homepage": "http://github.com/kirm/sip.js",
   "author": "Kirill Mikhailov <kirill.mikhailov@gmail.com>",
   "main": "sip",
+  "scripts": {
+    "test": "./node_modules/.bin/coffee test/runtests.coffee"
+  },
   "directories": {
     "lib": "",
     "example": "./examples",
