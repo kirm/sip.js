@@ -13,7 +13,7 @@ runTests = (tests) ->
 modules = process.argv[2..process.argv.length]
 
 if modules.length == 0
-  modules = ['parser', 'digest', 'rport']
+  modules = ['parser', 'digest', 'rport', 'stream_parser']
 
 console.log modules
 
