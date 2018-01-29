@@ -1444,7 +1444,8 @@ exports.create = function(options, callback) {
     destroy: function() {
       transaction.destroy();
       transport.destroy();
-    }
+    },
+    transaction,
   } 
 }
 
@@ -1457,5 +1458,6 @@ exports.start = function(options, callback) {
   exports.decodeFlowUri = r.decodeFlowUri;
   exports.isFlowUri = r.isFlowUri;
   exports.hostname = r.hostname;
+  exports.transaction = r.transaction;
 }
 
