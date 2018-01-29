@@ -3,7 +3,7 @@ udp = require('dgram')
 assert = require('assert')
 util = require('util')
 
-sip.start rport: true, (rq) -> sip.send sip.makeResponse rq, 500
+# sip.start rport: true, (rq) -> sip.send sip.makeResponse rq, 500
 
 socket = udp.createSocket 'udp4'
 
@@ -25,8 +25,11 @@ test1 = (success) ->
     rs = sip.stringify sip.makeResponse (sip.parse msg), 200
     socket.send (new Buffer rs), 0, rs.length, rinfo.port, rinfo.address
 
+  sip.start rport: true, (rq) -> sip.send sip.makeResponse rq, 500
+
   sip.send sip.copyMessage(message), (rs) -> 
     assert.equal 200, rs.status
+    sip.stop()
     success()
 
 test2 = (success) ->
@@ -34,14 +37,16 @@ test2 = (success) ->
     parsed = sip.parse msg
     rs = sip.stringify sip.makeResponse parsed, 200
     socket.send (new Buffer rs), 0, rs.length, parsed.headers.via[0].port, rinfo.address
+
+  sip.start rport: true, (rq) -> sip.send sip.makeResponse rq, 500
     
   sip.send message,
     (rs) -> 
       assert.equal 200, rs.status
+      sip.stop()
       success()
 
 test3 = (success) -> 
-  sip.stop()
   sip.start rport: false, (rq) -> sip.send sip.makeResponse rq, 500
 
   socket.once 'message', (msg, rinfo) ->
@@ -50,7 +55,9 @@ test3 = (success) ->
     rs = sip.stringify sip.makeResponse (sip.parse msg), 200
     socket.send (new Buffer rs), 0, rs.length, rinfo.port, rinfo.address
 
-  sip.send sip.copyMessage(message), () -> success()
+  sip.send sip.copyMessage(message), () -> 
+    sip.stop()
+    success()
 
 exports.tests = [test1, test2, test3]
  

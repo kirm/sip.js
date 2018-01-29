@@ -1,6 +1,7 @@
 assert = require('assert')
 sip = require('../sip')
 fs = require('fs')
+net = require('net')
 
 # check correct parsing of most of specifically parsed headers
 # ie contact is parsed to array, to parsed to single valued headers etc
@@ -68,14 +69,42 @@ test1 = (success) ->
 test2 = (success) ->
   # FIXME: 'intmeth', 'unreason' - fails
   messages = ['wsinv', 'esc01', 'escnull', 'esc02', 'lwsdisp', 'longreq', 'dblreq', 'semiuri', 'transports', 'mpart01', 'noreason', 'intmeth', 'unreason']
-
+  
   messages.forEach (name) ->
-    # console.log "# processing '#{name}'" # XXX
-    m = fs.readFileSync "#{__dirname}/messages/#{ name }.dat", 'ascii'
-    p = fs.readFileSync "#{__dirname}/messages/#{ name }.json", 'ascii'
+    console.log "# processing '#{name}'" # XXX
+    m = fs.readFileSync "#{__dirname}/messages/#{ name }.dat"
+    p = fs.readFileSync "#{__dirname}/messages/#{ name }.json", 'binary'
+    mp = sip.parse m
 
-    assert.deepEqual (JSON.parse JSON.stringify sip.parse m), (JSON.parse p)
-    
+    assert.deepEqual (JSON.parse JSON.stringify mp), (JSON.parse p)
+    assert(Buffer.compare (new Buffer mp.content || '', 'binary'), m.slice (m.indexOf (new Buffer '\r\n\r\n', 'binary') + 4))
+
   success()
 
-exports.tests = [test1, test2]
+tcp = (success) ->
+  messages = ['wsinv', 'esc01', 'escnull', 'esc02', 'lwsdisp', 'longreq', 'semiuri', 'transports', 'mpart01', 'noreason', 'intmeth', 'unreason']
+  parsed = [];
+
+  transport = sip.makeTransport {}, (m) -> 
+    m.headers.via[0].params.received = undefined
+    parsed.push m
+
+  blob = Buffer.concat messages.map (name) ->
+    m = fs.readFileSync "#{__dirname}/messages/#{ name }.dat"
+
+  jsons = messages.map (name) ->
+    JSON.parse fs.readFileSync "#{__dirname}/messages/#{ name }.json", 'binary'
+
+  (net.connect 5060).write(blob)
+
+  setTimeout () ->
+    assert parsed.length is messages.length
+    for i in [0 ... messages.length]
+      assert.deepEqual (JSON.parse JSON.stringify parsed[i]), jsons[i]
+
+    transport.destroy()
+
+    success()
+  , 1000
+
+exports.tests = [test1, test2, tcp]
