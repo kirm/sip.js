@@ -1396,7 +1396,7 @@ exports.create = function(options, callback) {
 
         (function(callback) {
           if(hop.host === hostname) {
-            var flow = decodeFlowToken(hop.user);
+            var flow = hop.user ? decodeFlowToken(hop.user) : undefined;
             callback(flow ? [flow] : []);
           }
           else
