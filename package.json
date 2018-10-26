@@ -1,7 +1,7 @@
 {
   "name": "sip",
   "description": "Simple SIP implementation",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "homepage": "http://github.com/kirm/sip.js",
   "author": "Kirill Mikhailov <kirill.mikhailov@gmail.com>",
   "main": "sip",
@@ -21,7 +21,7 @@
     "node": ">=0.2.2"
   },
   "dependencies": {
-    "ws": "*"
+    "ws": "^6.1.0"
   },
   "devDependencies": {
     "coffee-script": "~1.6.2"
