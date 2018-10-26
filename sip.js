@@ -27,7 +27,7 @@ function toBase64(s) {
   default:
   }
 
-  return (new Buffer(s)).toString('base64').replace(/\//g, '_').replace(/\+/g, '-');
+  return (new Buffer.from(s)).toString('base64').replace(/\//g, '_').replace(/\+/g, '-');
 }
 // Actual stack code begins here
 
@@ -686,7 +686,7 @@ function makeWsTransport(options, callback) {
         refs = 0;
     
     function send_connecting(m) { queue.push(stringify(m)); }
-    function send_open(m) { socket.send(new Buffer(typeof m === 'string' ? m : stringify(m), 'binary')); }
+    function send_open(m) { socket.send(new Buffer.from(typeof m === 'string' ? m : stringify(m), 'binary')); }
     var send = send_connecting;
 
     socket.on('open', function() { 
@@ -783,7 +783,7 @@ function makeUdpTransport(options, callback) {
     return {
       send: function(m) {
         var s = stringify(m);
-        socket.send(new Buffer(s, 'binary'), 0, s.length, remote.port, remote.address);          
+        socket.send(new Buffer.from(s, 'binary'), 0, s.length, remote.port, remote.address);          
       },
       protocol: 'UDP',
       release : function() {}
@@ -1358,7 +1358,7 @@ exports.create = function(options, callback) {
   }
 
   function decodeFlowToken(token) {
-    var s = (new Buffer(token, 'base64')).toString('ascii').split(',');
+    var s = (new Buffer.from(token, 'base64')).toString('ascii').split(',');
     if(s.length != 6) return;
 
     var flow = {protocol: s[1], address: s[2], port: +s[3], local: {address: s[4], port: +s[5]}};

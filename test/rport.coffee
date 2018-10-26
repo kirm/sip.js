@@ -23,7 +23,7 @@ test1 = (success) ->
     parsed = sip.parse msg
     assert.ok parsed.headers.via[0].params.hasOwnProperty('rport') 
     rs = sip.stringify sip.makeResponse (sip.parse msg), 200
-    socket.send (new Buffer rs), 0, rs.length, rinfo.port, rinfo.address
+    socket.send (Buffer.from rs), 0, rs.length, rinfo.port, rinfo.address
 
   sip.start rport: true, (rq) -> sip.send sip.makeResponse rq, 500
 
@@ -36,7 +36,7 @@ test2 = (success) ->
   socket.once 'message', (msg, rinfo) ->
     parsed = sip.parse msg
     rs = sip.stringify sip.makeResponse parsed, 200
-    socket.send (new Buffer rs), 0, rs.length, parsed.headers.via[0].port, rinfo.address
+    socket.send (Buffer.from rs), 0, rs.length, parsed.headers.via[0].port, rinfo.address
 
   sip.start rport: true, (rq) -> sip.send sip.makeResponse rq, 500
     
@@ -53,7 +53,7 @@ test3 = (success) ->
     parsed = sip.parse msg
     assert.ok !parsed.headers.via[0].params.hasOwnProperty('rport')
     rs = sip.stringify sip.makeResponse (sip.parse msg), 200
-    socket.send (new Buffer rs), 0, rs.length, rinfo.port, rinfo.address
+    socket.send (Buffer.from rs), 0, rs.length, rinfo.port, rinfo.address
 
   sip.send sip.copyMessage(message), () -> 
     sip.stop()
