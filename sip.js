@@ -6,7 +6,7 @@ var dgram = require('dgram');
 var tls = require('tls');
 var os = require('os');
 var crypto = require('crypto');
-var WebSocket = require('uws');
+var WebSocket = require('ws');
 
 function debug(e) {
   if(e.stack) {
