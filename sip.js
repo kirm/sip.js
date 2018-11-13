@@ -775,6 +775,8 @@ function makeUdpTransport(options, callback) {
       if(msg.headers.via[0].params.hasOwnProperty('rport'))
         targetPort = msg.headers.via[0].params.rport;
 
+      console.log(`targetPort: ${targetPort}`);
+
       callback(msg, {protocol: 'UDP', address: rinfo.address, port: targetPort, local: {address: address, port: port}});
     }
   }
