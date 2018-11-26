@@ -77,7 +77,7 @@ test2 = (success) ->
     mp = sip.parse m
 
     assert.deepEqual (JSON.parse JSON.stringify mp), (JSON.parse p)
-    assert(Buffer.compare (new Buffer mp.content || '', 'binary'), m.slice (m.indexOf (new Buffer '\r\n\r\n', 'binary') + 4))
+    assert(Buffer.compare (Buffer.from mp.content || '', 'binary'), m.slice (m.indexOf (Buffer.from '\r\n\r\n', 'binary') + 4))
 
   success()
 
