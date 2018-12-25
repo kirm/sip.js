@@ -406,7 +406,7 @@ exports.makeResponse = makeResponse;
 function clone(o, deep) {
   if(typeof o === 'object') {
     var r = Array.isArray(o) ? [] : {};
-    Object.keys(o).forEach(function(k) { r[k] = deep ? clone(o[k], deep): o[k]; });
+    Object.keys(o).forEach(function(k) { r[k] = deep && o[k] ? clone(o[k], deep): o[k]; });
     return r;
   }
 
