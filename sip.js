@@ -1385,7 +1385,7 @@ exports.create = function(options, callback) {
  
         if(m.headers.route && m.headers.route.length > 0) {
           hop = parseUri(m.headers.route[0].uri);
-          if(hop.host === hostname) {
+          if(hop.host === hostname && hop.port === options.port) {
             m.headers.route.shift();
           } 
           else if(hop.params.lr === undefined ) {
@@ -1396,7 +1396,7 @@ exports.create = function(options, callback) {
         }
 
         (function(callback) {
-          if(hop.host === hostname) {
+          if(hop.host === hostname && hop.port === options.port) {
             var flow = hop.user ? decodeFlowToken(hop.user) : undefined;
             callback(flow ? [flow] : []);
           }
