@@ -1293,6 +1293,7 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
         var client = transaction(connect(address, function(err) {
           if(err) {
             console.log("err: ", err);
+            return callback(makeResponse(rq, 503, 'Unreachable') );
           }
           client.message(makeResponse(rq, 503));
         }), rq, function() { onresponse.apply(null, arguments); }); 
