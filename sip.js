@@ -1343,6 +1343,10 @@ exports.create = function(options, callback) {
         }
       }
       else {
+        // high level logic should decide what to do with unmatched cancel - stateful/stateless proxy
+        if (m.method == 'CANCEL') {
+            return callback(m, remote);
+        }
         t.message && t.message(m, remote);
       }
     } 
