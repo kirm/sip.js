@@ -5,7 +5,7 @@ var contexts = {};
 
 function makeContextId(msg) {
   var via = msg.headers.via[0];
-  return [via.params.branch, via.protocol, via.host, via.port, msg.headers['call-id'], msg.headers.cseq.seq];
+  return [via.params.branch, via.protocol, via.host, via.port || '', msg.headers['call-id'], msg.headers.cseq.seq];
 }
 
 function defaultCallback(rs) {
@@ -53,6 +53,15 @@ function sendCancel(rq, via, route) {
 
 function forwardRequest(ctx, rq, callback) {
   var route = rq.headers.route && rq.headers.route.slice();
+  if (!ctx.cancellers[rq.headers.via[0].params.branch])
+      ctx.cancellers[rq.headers.via[0].params.branch] = function() {
+          const rsc = sip.makeResponse(rq, 481);
+          const t = sip.transaction.getClient(rsc);
+          t.message && t.message(rsc);
+          rq.headers.via.shift();
+          const rss = sip.makeResponse(rq, 481);
+          sip.send(rss);
+  };
   sip.send(rq, function(rs, remote) {
     if(+rs.status < 200) {
       var via = rs.headers.via[0];
@@ -108,3 +117,6 @@ exports.start = function(options, route) {
 
 exports.stop = sip.stop;
 
+exports.getContext = (rq) => {
+  return contexts[makeContextId(rq)];
+}
