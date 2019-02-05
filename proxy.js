@@ -55,11 +55,11 @@ function forwardRequest(ctx, rq, callback) {
   var route = rq.headers.route && rq.headers.route.slice();
   if (!ctx.cancellers[rq.headers.via[0].params.branch])
       ctx.cancellers[rq.headers.via[0].params.branch] = function() {
-          const rsc = sip.makeResponse(rq, 481);
+          const rsc = sip.makeResponse(rq, 481, "Call doesn't exist");
           const t = sip.transaction.getClient(rsc);
-          t.message && t.message(rsc);
+          t && t.message && t.message(rsc);
           rq.headers.via.shift();
-          const rss = sip.makeResponse(rq, 481);
+          const rss = sip.makeResponse(rq, 481, "Call doesn't exist");
           sip.send(rss);
   };
   sip.send(rq, function(rs, remote) {
@@ -106,7 +106,7 @@ exports.start = function(options, route) {
         }
       }
       else {
-        sip.send(sip.makeResponse(rq, 481));
+        sip.send(sip.makeResponse(rq, 481, "Call doesn't exist"));
       }
     }
     else {
