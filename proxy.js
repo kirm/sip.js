@@ -5,7 +5,7 @@ var contexts = {};
 
 function makeContextId(msg) {
   var via = msg.headers.via[0];
-  return [via.params.branch, via.protocol, via.host, via.port || '', msg.headers['call-id'], msg.headers.cseq.seq];
+  return [via.params.branch, via.protocol, via.host, via.port || 5060, msg.headers['call-id'], msg.headers.cseq.seq];
 }
 
 function defaultCallback(rs) {
