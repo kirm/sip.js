@@ -218,7 +218,7 @@ function parseUri(s) {
       user: r[2],
       password: r[3],
       host: r[4],
-      port: +r[5],
+      port: (r[5] ? +r[5] : 5060),
       params: (r[6].match(/([^;=]+)(=([^;=]+))?/g) || [])
         .map(function(s) { return s.split('='); })
         .reduce(function(params, x) { params[x[0]]=x[1] || null; return params;}, {}),
