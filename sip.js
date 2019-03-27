@@ -1284,6 +1284,7 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
 
   var onresponse;
   var lastStatusCode;
+  var lastStatusReason;
   function next() {
     onresponse = searching;
     
@@ -1295,21 +1296,22 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
             console.log("err: ", err);
             return callback(makeResponse(rq, 503, 'Unreachable') );
           }
-          client.message(makeResponse(rq, 503));
+          client.message(makeResponse(rq, 503, 'Server Error'));
         }), rq, function() { onresponse.apply(null, arguments); }); 
       }
       catch(e) {
-        onresponse(address.local ? makeResponse(rq, 430) : makeResponse(rq, 503));  
+        onresponse(address.local ? makeResponse(rq, 430) : makeResponse(rq, 503, 'Service Error'));  
       }
     }
     else {
       onresponse = callback;
-      onresponse(makeResponse(rq, lastStatusCode || 404));
+      onresponse(makeResponse(rq, lastStatusCode || 404, lastStatusReason || ''));
     }
   }
 
   function searching(rs) {
     lastStatusCode = rs.status;
+    lastStatusReason = rs.reason;
     if(rs.status === 503)
       return next();
     else if(rs.status > 100)
