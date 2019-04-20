@@ -102,6 +102,7 @@ exports.start = function(options, route) {
         console.error(rq.headers['call-id'], 'CANCEL - Call doesn\'t exist');
         sip.send(sip.makeResponse(rq, 481, "Call doesn't exist"));
       }
+      route(rq, remote)
     }
     else {
       onRequest(rq, route, remote);
