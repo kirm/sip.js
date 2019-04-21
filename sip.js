@@ -918,7 +918,7 @@ function resolve(uri, action) {
     });
   }
   else {
-    var protocols = uri.params.transport ? [uri.params.transport] : ['tcp', 'udp', 'tls'];
+    var protocols = uri.params.transport ? [uri.params.transport] : ['udp', 'tcp', 'tls'];
   
     var n = protocols.length;
     var addresses = [];
