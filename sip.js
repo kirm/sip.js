@@ -781,6 +781,7 @@ function makeUdpTransport(options, callback) {
 
   socket.on("listening", function() {
       options.port = socket.address().port;
+      port = socket.address().port;
   });
 
   function open(remote, error) {
