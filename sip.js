@@ -407,7 +407,7 @@ function makeResponse(rq, status, reason, extension) {
 exports.makeResponse = makeResponse;
 
 function clone(o, deep) {
-  if(typeof o === 'object') {
+  if(o !== null && typeof o === 'object') {
     var r = Array.isArray(o) ? [] : {};
     Object.keys(o).forEach(function(k) { r[k] = deep ? clone(o[k], deep): o[k]; });
     return r;
