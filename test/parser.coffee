@@ -68,7 +68,7 @@ test1 = (success) ->
 #sip parser torture tests
 test2 = (success) ->
   # FIXME: 'intmeth', 'unreason' - fails
-  messages = ['wsinv', 'esc01', 'escnull', 'esc02', 'lwsdisp', 'longreq', 'dblreq', 'semiuri', 'transports', 'mpart01', 'noreason', 'intmeth', 'unreason']
+  messages = ['wsinv', 'esc01', 'escnull', 'esc02', 'lwsdisp', 'longreq', 'dblreq', 'semiuri', 'transports', 'mpart01', 'noreason', 'intmeth', 'unreason', 'badcseq']
   
   messages.forEach (name) ->
     console.log "# processing '#{name}'" # XXX
