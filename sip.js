@@ -823,7 +823,9 @@ function makeTransport(options, callback) {
   function wrap(obj, target) {
     return Object.create(obj, {send: {value: function(m) {
       if(m.method) {
-        m.headers.via[0].host = options.publicAddress || options.address || options.hostname || os.hostname();
+        // ##FIXME
+        // m.headers.via[0].host = options.publicAddress || options.address || options.hostname || os.hostname();
+        m.headers.via[0].host = options.address || options.hostname || os.hostname();
         m.headers.via[0].port = options.port || defaultPort(this.protocol);
         m.headers.via[0].protocol = this.protocol;
 
