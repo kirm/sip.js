@@ -121,7 +121,7 @@ exports.challenge = function(ctx, rs) {
       scheme: 'Digest',
       realm: q(ctx.realm),
       qop: q(ctx.qop),
-      algorithm: ctx.algoritm,
+      algorithm: ctx.algorithm,
       nonce: q(ctx.nonce),
       opaque: q(ctx.opaque)
     }
@@ -144,7 +144,7 @@ exports.authenticateRequest = function(ctx, rq, creds) {
   if(!ctx.ha1) {
     ctx.userhash = creds.hash || calculateUserRealmPasswordHash(creds.user, ctx.realm, creds.password);
     ctx.ha1 = ctx.userhash;
-    if(ctx.algoritm === 'md5-sess')
+    if(ctx.algorithm === 'md5-sess')
       ctx.ha1 = kd(ctx.userhash, ctx.nonce, cnonce);
   }
   

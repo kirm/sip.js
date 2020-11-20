@@ -1,0 +1,38 @@
+{
+  "method": "INVITE",
+  "uri": "sip:user@example.com",
+  "version": "2.0",
+  "headers": {
+    "contact": [
+      {
+        "uri": "sip:caller@host5.example.net",
+        "params": {}
+      }
+    ],
+    "to": {
+      "uri": "sip:j.user@example.com",
+      "params": {}
+    },
+    "from": {
+      "uri": "sip:caller@example.net",
+      "params": {
+        "tag": "8392034"
+      }
+    },
+    "max-forwards": "70",
+    "call-id": "invut.0ha0isndaksdjadsfij34n23d",
+    "via": [
+      {
+        "version": "2.0",
+        "protocol": "UDP",
+        "host": "somehost.example.com",
+        "params": {
+          "branch": "z9hG4bKkdjuw"
+        }
+      }
+    ],
+    "content-type": "application/unknownformat",
+    "content-length": 40
+  },
+  "content": "<audio>\r\n <pcmu port=\"443\"/>\r\n</audio>\r\n"
+}
