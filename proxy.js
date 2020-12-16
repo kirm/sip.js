@@ -52,7 +52,7 @@ function sendCancel(rq, via, route) {
 
 
 function forwardRequest(ctx, rq, callback) {
-  var route = rq.headers.route && rq.headers.route.slice(1);
+  var route = rq.headers.route && rq.headers.route.slice();
   sip.send(rq, function(rs, remote) {
     if(+rs.status < 200) {
       var via = rs.headers.via[0];
