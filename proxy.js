@@ -5,7 +5,7 @@ var contexts = {};
 
 function makeContextId(msg) {
   var via = msg.headers.via[0];
-  return [via.params.branch, via.protocol, via.host, via.port, msg.headers['call-id'], msg.headers.cseq.seq];
+  return [via.params.branch, via.protocol, via.host, via.port || 5060, msg.headers['call-id'], msg.headers.cseq.seq];
 }
 
 function defaultCallback(rs) {
@@ -94,11 +94,15 @@ exports.start = function(options, route) {
         ctx.cancelled = true;
         if(ctx.cancellers) {
           Object.keys(ctx.cancellers).forEach(function(c) { ctx.cancellers[c](); });
+        } else {
+          console.error(rq.headers['call-id'], 'CANCEL - Cancellers doesn\'t exist');
         }
       }
       else {
-        sip.send(sip.makeResponse(rq, 481));
+        console.error(rq.headers['call-id'], 'CANCEL - Call doesn\'t exist');
+        sip.send(sip.makeResponse(rq, 481, "Call doesn't exist"));
       }
+      route(rq, remote)
     }
     else {
       onRequest(rq, route, remote);
@@ -108,3 +112,6 @@ exports.start = function(options, route) {
 
 exports.stop = sip.stop;
 
+exports.getContext = (rq) => {
+  return contexts[makeContextId(rq)];
+}

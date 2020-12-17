@@ -221,7 +221,7 @@ function parseUri(s) {
       user: r[2],
       password: r[3],
       host: r[4],
-      port: +r[5],
+      port: (r[5] ? +r[5] : 5060),
       params: (r[6].match(/([^;=]+)(=([^;=]+))?/g) || [])
         .map(function(s) { return s.split('='); })
         .reduce(function(params, x) { params[x[0]]=x[1] || null; return params;}, {}),
@@ -409,7 +409,7 @@ exports.makeResponse = makeResponse;
 function clone(o, deep) {
   if(o !== null && typeof o === 'object') {
     var r = Array.isArray(o) ? [] : {};
-    Object.keys(o).forEach(function(k) { r[k] = deep ? clone(o[k], deep): o[k]; });
+    Object.keys(o).forEach(function(k) { r[k] = deep && o[k] ? clone(o[k], deep): o[k]; });
     return r;
   }
 
@@ -777,10 +777,15 @@ function makeUdpTransport(options, callback) {
   }
 
   var address = options.address || '0.0.0.0';
-  var port = options.port || 5060;
+  var port = typeof(options.port) == undefined ? 5060 : options.port;
 
   var socket = dgram.createSocket(net.isIPv6(address) ? 'udp6' : 'udp4', onMessage); 
   socket.bind(port, address);
+
+  socket.on("listening", function() {
+      options.port = socket.address().port;
+      port = socket.address().port;
+  });
 
   function open(remote, error) {
     return {
@@ -917,7 +922,7 @@ function resolve(uri, action) {
     });
   }
   else {
-    var protocols = uri.params.transport ? [uri.params.transport] : ['tcp', 'udp', 'tls'];
+    var protocols = uri.params.transport ? [uri.params.transport] : ['udp', 'tcp', 'tls'];
   
     var n = protocols.length;
     var addresses = [];
@@ -1283,6 +1288,7 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
 
   var onresponse;
   var lastStatusCode;
+  var lastStatusReason;
   function next() {
     onresponse = searching;
     
@@ -1292,22 +1298,24 @@ function sequentialSearch(transaction, connect, addresses, rq, callback) {
         var client = transaction(connect(address, function(err) {
           if(err) {
             console.log("err: ", err);
+            return callback(makeResponse(rq, 503, 'Unreachable') );
           }
-          client.message(makeResponse(rq, 503));
+          client.message(makeResponse(rq, 503, 'Server Error'));
         }), rq, function() { onresponse.apply(null, arguments); }); 
       }
       catch(e) {
-        onresponse(address.local ? makeResponse(rq, 430) : makeResponse(rq, 503));  
+        onresponse(address.local ? makeResponse(rq, 430) : makeResponse(rq, 503, 'Service Error'));  
       }
     }
     else {
       onresponse = callback;
-      onresponse(makeResponse(rq, lastStatusCode || 404));
+      onresponse(makeResponse(rq, lastStatusCode || 404, lastStatusReason || ''));
     }
   }
 
   function searching(rs) {
     lastStatusCode = rs.status;
+    lastStatusReason = rs.reason;
     if(rs.status === 503)
       return next();
     else if(rs.status > 100)
@@ -1341,6 +1349,10 @@ exports.create = function(options, callback) {
         }
       }
       else {
+        // rare case, high level logic should decide what to do with this case of cancel - stateful/stateless proxy
+        if (m.method == 'CANCEL') {
+            return callback(m, remote);
+        }
         t.message && t.message(m, remote);
       }
     } 
@@ -1389,7 +1401,7 @@ exports.create = function(options, callback) {
 
         if(m.headers.route && m.headers.route.length > 0) {
           hop = parseUri(m.headers.route[0].uri);
-          if(hop.host === hostname) {
+          if(hop.host === hostname && hop.port === options.port) {
             m.headers.route.shift();
           } 
           else if(hop.params.lr === undefined ) {
@@ -1400,8 +1412,8 @@ exports.create = function(options, callback) {
         }
 
         (function(callback) {
-          if(hop.host === hostname) {
-            var flow = decodeFlowToken(hop.user);
+          if(hop.host === hostname && hop.port === options.port) {
+            var flow = hop.user ? decodeFlowToken(hop.user) : undefined;
             callback(flow ? [flow] : []);
           }
           else
@@ -1449,7 +1461,8 @@ exports.create = function(options, callback) {
     destroy: function() {
       transaction.destroy();
       transport.destroy();
-    }
+    },
+    transaction,
   } 
 }
 
@@ -1462,5 +1475,6 @@ exports.start = function(options, callback) {
   exports.decodeFlowUri = r.decodeFlowUri;
   exports.isFlowUri = r.isFlowUri;
   exports.hostname = r.hostname;
+  exports.transaction = r.transaction;
 }
 
