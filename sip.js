@@ -829,7 +829,12 @@ function makeTransport(options, callback) {
         var host = options.publicAddress || options.address || options.hostname || os.hostname();
         var hostValue = net.isIPv6(host) ? "[" + host + "]" : host;
         m.headers.via[0].host = hostValue;
-        m.headers.via[0].port = options.port || defaultPort(this.protocol);
+        let reqUri = parseUri(m.uri);
+        let tlsPort;
+        if(reqUri.params.transport && reqUri.params.transport === "tls"){
+          tlsPort = options.tls_port;
+        }
+        m.headers.via[0].port = tlsPort || options.port || defaultPort(this.protocol);
         m.headers.via[0].protocol = this.protocol;
 
         if(this.protocol === 'UDP' && (!options.hasOwnProperty('rport') || options.rport)) {
