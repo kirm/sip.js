@@ -1351,6 +1351,7 @@ exports.create = function(options, callback) {
   
   var transaction = makeTransactionLayer(options, transport.open.bind(transport));
   var hostname = options.publicAddress || options.address || options.hostname || os.hostname();
+  var port = options.port || 5060;
   var rbytes = crypto.randomBytes(20);
 
   function encodeFlowToken(flow) {
@@ -1389,7 +1390,7 @@ exports.create = function(options, callback) {
 
         if(m.headers.route && m.headers.route.length > 0) {
           hop = parseUri(m.headers.route[0].uri);
-          if(hop.host === hostname) {
+          if(hop.host === hostname && hop.port === port) {
             m.headers.route.shift();
           } 
           else if(hop.params.lr === undefined ) {
@@ -1400,7 +1401,7 @@ exports.create = function(options, callback) {
         }
 
         (function(callback) {
-          if(hop.host === hostname) {
+          if(hop.host === hostname && hop.port === port) {
             var flow = decodeFlowToken(hop.user);
             callback(flow ? [flow] : []);
           }
