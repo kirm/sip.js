@@ -1111,7 +1111,19 @@ function createInviteClientTransaction(rq, transport, tu, cleanup, options) {
     }
   };
 
+  var ringTimeLimit;
   var proceeding = {
+    enter: function() {
+      if(options.ringTimeLimit !== 0) {
+        ringTimeLimit = setTimeout(function() {
+          tu(makeResponse(rq, 408));
+          sm.enter(terminated);
+        }, options.ringTimeLimit || 600000);
+      }
+    },
+    leave : function() {
+      clearTimeout(ringTimeLimit);
+    },
     message: function(message) {
       tu(message);
       
@@ -1200,7 +1212,19 @@ function createClientTransaction(rq, transport, tu, cleanup) {
     }
   };
 
+  var ringTimeLimit;
   var proceeding = {
+    enter: function() {
+      if(options.ringTimeLimit !== 0) {
+        ringTimeLimit = setTimeout(function() {
+          tu(makeResponse(rq, 408));
+          sm.enter(terminated);
+        }, options.ringTimeLimit || 600000);
+      }
+    },
+    leave : function() {
+      clearTimeout(ringTimeLimit);
+    },
     message: function(message, remote) {
       if(message.status >= 200)
         sm.enter(completed);
