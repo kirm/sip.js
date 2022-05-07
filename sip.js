@@ -772,7 +772,13 @@ function makeUdpTransport(options, callback) {
           msg.headers.via[0].params.rport = rinfo.port;
       }
 
-      callback(msg, {protocol: 'UDP', address: rinfo.address, port: rinfo.port, local: {address: address, port: port}});
+      var targetPort = 5060;
+      if(msg.headers.via[0].params.hasOwnProperty('sent-by'))
+        targetPort = msg.headers.via[0].params.hasOwnProperty('sent-by');
+      if(msg.headers.via[0].params.hasOwnProperty('rport'))
+        targetPort = msg.headers.via[0].params.rport;
+
+      callback(msg, {protocol: 'UDP', address: rinfo.address, port: targetPort, local: {address: address, port: port}});
     }
   }
 
