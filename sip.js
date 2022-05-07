@@ -445,6 +445,7 @@ function makeStreamParser(onMessage, onFlood, maxBytesHeaders, maxContentLength)
   maxContentLength= maxContentLength || 604800;
 
   var m;
+  var p;
   var r = '';
   
   function headers(data) {
@@ -460,11 +461,16 @@ function makeStreamParser(onMessage, onFlood, maxBytesHeaders, maxContentLength)
 
     }
 
-    var a = r.match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
-
-    if(a) {
-      r = a[2];
-      m = parse(a[1]);
+    var a = r.match(/^PROXY (\S+) (\S+) (\S+) (\S+) (\S+)\r\n([\S\s]*)$/);
+    if (a) {
+      p = {'protocol': a[1], 'source-address': a[2], 'destination-address': a[3], 'source-port': a[4], 'destination-port': a[5]};
+      r = a[6];
+    }
+    
+    var b = r.match(/^\s*([\S\s]*?)\r\n\r\n([\S\s]*)$/);
+    if(b) {
+      r = b[2];
+      m = parse(b[1]);
 
       if(m && m.headers['content-length'] !== undefined) {
 
@@ -490,7 +496,7 @@ function makeStreamParser(onMessage, onFlood, maxBytesHeaders, maxContentLength)
     if(r.length >= m.headers['content-length']) {
       m.content = r.substring(0, m.headers['content-length']);
       
-      onMessage(m);
+      onMessage(m, p);
       
       var s = r.substring(m.headers['content-length']);
       state = headers;
@@ -551,12 +557,11 @@ function makeStreamTransport(protocol, maxBytesHeaders, maxContentLength, connec
       flows[flowid] = remotes[remoteid];
     }
 
-    var onMessage= function(m) {
-
+    var onMessage= function(m,p) {
       if(checkMessage(m)) {
         if(m.method) m.headers.via[0].params.received = remote.address;
         callback(m,
-          {protocol: remote.protocol, address: stream.remoteAddress, port: stream.remotePort, local: { address: stream.localAddress, port: stream.localPort}},
+          {protocol: remote.protocol, address: stream.remoteAddress, port: stream.remotePort, local: { address: stream.localAddress, port: stream.localPort}, proxy: p},
           stream);
       }
 
