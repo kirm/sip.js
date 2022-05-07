@@ -106,7 +106,7 @@ function parseAorWithUri(data) {
 }
 
 function parseVia(data) {
-  var r = applyRegex(/SIP\s*\/\s*(\d+\.\d+)\s*\/\s*([\S]+)\s+([^\s;:]+)(?:\s*:\s*(\d+))?/g, data);
+  var r = applyRegex(/SIP\s*\/\s*(\d+\.\d+)\s*\/\s*([\S]+)\s+([\w\-\.]+|\[[\w\-\:]+\])(?::(\d+))(?:\s*:\s*(\d+))?/g, data);
   return parseParams(data, {version: r[1], protocol: r[2], host: r[3], port: r[4] && +r[4]});
 }
 
@@ -211,17 +211,20 @@ function parseUri(s) {
   if(typeof s === 'object')
     return s;
 
-  var re = /^(sips?):(?:([^\s>:@]+)(?::([^\s@>]+))?@)?([\w\-\.]+)(?::(\d+))?((?:;[^\s=\?>;]+(?:=[^\s?\;]+)?)*)(?:\?(([^\s&=>]+=[^\s&=>]+)(&[^\s&=>]+=[^\s&=>]+)*))?$/;
+  var re = /^(sips?):(?:([^\s>:@]+)(?::([^\s@>]+))?@)([\w\-\.]+|\[[\w\-\:]+\])(?::(\d+))?((?:;[^\s=\?>;]+(?:=[^\s?\;]+)?)*)(?:\?(([^\s&=>]+=[^\s&=>]+)(&[^\s&=>]+=[^\s&=>]+)*))?$/;
 
   var r = re.exec(s);
 
   if(r) {
+    var hostString = r[4].replace('\[','');
+    hostString = hostString.replace('\]','');
+
     return {
       schema: r[1],
       user: r[2],
       password: r[3],
-      host: r[4],
-      port: +r[5],
+      host: hostString,
+      port: r[5],
       params: (r[6].match(/([^;=]+)(=([^;=]+))?/g) || [])
         .map(function(s) { return s.split('='); })
         .reduce(function(params, x) { params[x[0]]=x[1] || null; return params;}, {}),
@@ -823,8 +826,15 @@ function makeTransport(options, callback) {
   function wrap(obj, target) {
     return Object.create(obj, {send: {value: function(m) {
       if(m.method) {
-        m.headers.via[0].host = options.publicAddress || options.address || options.hostname || os.hostname();
-        m.headers.via[0].port = options.port || defaultPort(this.protocol);
+        var host = options.publicAddress || options.address || options.hostname || os.hostname();
+        var hostValue = net.isIPv6(host) ? "[" + host + "]" : host;
+        m.headers.via[0].host = hostValue;
+        let reqUri = parseUri(m.uri);
+        let tlsPort;
+        if(reqUri.params.transport && reqUri.params.transport === "tls"){
+          tlsPort = options.tls_port;
+        }
+        m.headers.via[0].port = tlsPort || options.port || defaultPort(this.protocol);
         m.headers.via[0].protocol = this.protocol;
 
         if(this.protocol === 'UDP' && (!options.hasOwnProperty('rport') || options.rport)) {
