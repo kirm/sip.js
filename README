@@ -1,7 +1,7 @@
 INTRO
 -----
 
-sip.js is a SIP stack for node.js. It implements tranaction and transport layers as described in RFC3261. 
+sip.js is a SIP stack for node.js. It implements transaction and transport layers as described in RFC3261. 
 
 INSTALL
 -------
